@@ -14,6 +14,7 @@ import javax.swing.JLabel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JCheckBox;
+import javax.swing.JTextField;
 import java.awt.event.*;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -31,11 +32,16 @@ import javax.swing.event.MouseInputAdapter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
 
 //for processing radar data
 import javax.swing.SwingWorker;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -44,15 +50,16 @@ import java.util.concurrent.CountDownLatch;
 public class RadarDisplay {
 
     private static JFrame radarWindow;
-    private static final String BASE_DIR = "C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\35000m";
+    private static final String BASE_DIR = "C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\";
     private static RadarSession currRadarSession;
     private static File directoryPath, filesList[];
     private static int fileSkipStep;
     private static JLabel lMPerCell, lRangeIR, lSpokeSeqNums,
-                          lActiveCells, lNumRotFiles, lRot, lDate, lTime, lWarning;
+                          lActiveCells, lNumRotFiles, lRot, lDate, lTime, lWarning, lNum, lNumRotForRefRot;
     private static JButton bLoad, bStepFwd, bStepBck, bRun, bStop, bClear;
     private static JComboBox cbDirectoryList, cbRotationFileList, cbFileSkipStep;
     private static JCheckBox ckBxDrawGraphics;
+    private static JTextField txtBxNumRotForRefRot;
     private static PPIPanel ppiPanel;
     private static SwingWorker swPMR;
     
@@ -67,7 +74,7 @@ public class RadarDisplay {
 
     private static void createAppWindow() {
         
-        radarWindow = new JFrame("SmartC0ast...");
+        radarWindow = new JFrame("SmartCoast...");
         
         radarWindow.setResizable(false);
         radarWindow.setLayout(new BorderLayout());
@@ -84,6 +91,7 @@ public class RadarDisplay {
         lRot = new JLabel("Rotation:");
         lDate = new JLabel("   Data Record Date: ");
         lTime = new JLabel("Rotation start time: ");
+        lNumRotForRefRot = new JLabel("Num rots for refrence rot");
 
         cbDirectoryList = new JComboBox();
         cbDirectoryList.setBounds(5, 10, 230, 30);
@@ -129,6 +137,11 @@ public class RadarDisplay {
         lActiveCells.setForeground(Color.YELLOW);
         lActiveCells.setFont(font);
         
+        lNumRotForRefRot.setBounds(25, 970, 200, 30);
+        lNumRotForRefRot.setBackground(Color.BLACK);
+        lNumRotForRefRot.setForeground(Color.YELLOW);
+        lNumRotForRefRot.setFont(font);
+        
         font = new Font("Courier", Font.BOLD, 14);
         lWarning = new JLabel("Warnings: Nil");
         lWarning.setBounds(900, 10, 500, 30);
@@ -173,6 +186,9 @@ public class RadarDisplay {
         
         bClear = new JButton("Clear");
         bClear.setBounds(25, 425, 100, 30);
+        
+        txtBxNumRotForRefRot = new JTextField();
+        txtBxNumRotForRefRot.setBounds(25, 1000, 200, 30);
 
         directoryPath = new File (BASE_DIR);
         
@@ -196,6 +212,8 @@ public class RadarDisplay {
         radarWindow.add(lActiveCells);
         radarWindow.add(lRot);
         radarWindow.add(lWarning);
+        radarWindow.add(lNumRotForRefRot);
+        radarWindow.add(txtBxNumRotForRefRot);
 
         bLoad.addActionListener((ActionEvent e) -> {
             CountDownLatch latch = new CountDownLatch(0);
@@ -237,6 +255,7 @@ public class RadarDisplay {
             cbRotationFileList.removeAllItems();
             lRot.setText("Rotation: ");
             ckBxDrawGraphics.setSelected(true);
+            txtBxNumRotForRefRot.setText("");
             radarWindow.setTitle("SmartC0ast...");
         });
         
@@ -250,7 +269,7 @@ public class RadarDisplay {
             public void actionPerformed(ActionEvent e) {
                 directoryPath = new File(BASE_DIR + 
                         cbDirectoryList.getSelectedItem().toString());
-                //System.out.println(directoryPath.toString());
+                System.out.println(directoryPath.toString());
                 //Create a Radar session object from station.txt file
                 currRadarSession = new RadarSession(directoryPath);
                 //Get all files for this session
@@ -279,6 +298,7 @@ public class RadarDisplay {
         radarWindow.add(ckBxDrawGraphics);
         radarWindow.add(bStop);
         radarWindow.add(bClear);
+        radarWindow.add(txtBxNumRotForRefRot);
 
         //Add the PPIPanel to the App window
         ppiPanel = new PPIPanel();
@@ -313,7 +333,7 @@ public class RadarDisplay {
                     //process(l);
                     //update the PPI Images if drawing graphics is selected
                     if (ckBxDrawGraphics.isSelected()){
-                        ppiPanel.updatePPIImages(rs);
+                        ppiPanel.updatePPIImages(rs, txtBxNumRotForRefRot.getText());
                         lSpokeSeqNums.setText("     Spoke (seq) # : " + rs.getSpokeNum()
                             + " (" + rs.getSeqNum() + ")");
                     lActiveCells.setText("       Active Cells: " + rs.getActiveCellCount());
@@ -525,8 +545,13 @@ class PPIPanel extends JPanel {
         repaint();
     }//initialisePPIImages
 
-    public void updatePPIImages(RadarSpoke rs) {
+    public void updatePPIImages(RadarSpoke rs, String strNumRotsForRefRot) {
         //update the Bufferedimage for the latest spoke
+        
+        //testing number of rotations for reference rotation	
+        if(!strNumRotsForRefRot.isEmpty()){
+            Integer.parseInt(strNumRotsForRefRot);
+        }
 
 // Create a graphics which can be used to draw into the buffered image
         Graphics2D ppiImageg = (Graphics2D) ppiFullSizeImage.getGraphics();
@@ -602,9 +627,27 @@ class PPIPanel extends JPanel {
             } catch (Exception e) {
                 //...
             }
-        }
+        }                //...
     //System.out.println("Finished UpdatePPIImages");
     }//updatePPIImage
+    
+    private static RadarRotation createRefrenceRotation(int numRotationsToRead){
+        List<File> fileList = Arrays.asList(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\rain_35000m").listFiles());
+        if(fileList.size() == 0)
+            return null;
+        RadarRotation refrenceMask = new RadarRotation(fileList.get(0));
+        int fileIndex = 1;
+        while(fileIndex < numRotationsToRead && fileIndex < fileList.size()){
+            refrenceMask = averageOfRotations(refrenceMask, new RadarRotation(fileList.get(fileIndex)));
+            fileIndex++;
+        }
+        return refrenceMask;
+    }//End createRefrenceRotation
+    
+    private static RadarRotation averageOfRotations(RadarRotation refrenceMask, RadarRotation comparisonRotation){
+        
+        return refrenceMask;
+    }
     
     private static Color getColours(int echo) {
         Color rgb = new Color(0, 0, 0);
@@ -771,6 +814,8 @@ class PPIPanel extends JPanel {
         g.drawImage(ppiDisplayImage,130, 10, null);
         //Toolkit.getDefaultToolkit().sync();
     }//paintComponent
+    
+    
 
 }//MyPanel
 
