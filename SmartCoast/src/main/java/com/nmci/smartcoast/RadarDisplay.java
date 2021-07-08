@@ -91,7 +91,7 @@ public class RadarDisplay {
         lRot = new JLabel("Rotation:");
         lDate = new JLabel("   Data Record Date: ");
         lTime = new JLabel("Rotation start time: ");
-        lNumRotForRefRot = new JLabel("Num rots for refrence rot");
+        lNumRotForRefRot = new JLabel("Num rots for refrence rot?");
 
         cbDirectoryList = new JComboBox();
         cbDirectoryList.setBounds(5, 10, 230, 30);
@@ -137,7 +137,7 @@ public class RadarDisplay {
         lActiveCells.setForeground(Color.YELLOW);
         lActiveCells.setFont(font);
         
-        lNumRotForRefRot.setBounds(25, 970, 200, 30);
+        lNumRotForRefRot.setBounds(25, 470, 200, 30);
         lNumRotForRefRot.setBackground(Color.BLACK);
         lNumRotForRefRot.setForeground(Color.YELLOW);
         lNumRotForRefRot.setFont(font);
@@ -187,8 +187,8 @@ public class RadarDisplay {
         bClear = new JButton("Clear");
         bClear.setBounds(25, 425, 100, 30);
         
-        txtBxNumRotForRefRot = new JTextField();
-        txtBxNumRotForRefRot.setBounds(25, 1000, 200, 30);
+        txtBxNumRotForRefRot = new JTextField("0");
+        txtBxNumRotForRefRot.setBounds(25, 500, 50, 30);
 
         directoryPath = new File (BASE_DIR);
         
@@ -255,7 +255,7 @@ public class RadarDisplay {
             cbRotationFileList.removeAllItems();
             lRot.setText("Rotation: ");
             ckBxDrawGraphics.setSelected(true);
-            txtBxNumRotForRefRot.setText("");
+            txtBxNumRotForRefRot.setText("0");
             radarWindow.setTitle("SmartC0ast...");
         });
         
@@ -327,13 +327,43 @@ public class RadarDisplay {
                     writer.close();
                 }
                 
+                int[][] refrenceMask = null;
+                if(!txtBxNumRotForRefRot.getText().isEmpty()){
+                    List<File> fileList = Arrays.asList(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\35000m").listFiles());
+                    refrenceMask = new int[2048][1024];  
+                    RadarRotation comparisonRotation;
+                    int fileIndex = 0;
+                    while(fileIndex < Integer.parseInt(txtBxNumRotForRefRot.getText()) && fileIndex < fileList.size()){     //loop for going through files in directory
+                        comparisonRotation = new RadarRotation(fileList.get(fileIndex));
+                        for(RadarSpoke spoke : comparisonRotation.getSpokes()){
+                            for(RadarCell cell : spoke.getCells()){
+                                refrenceMask[cell.getSpokeIdx()][cell.getCellIdx()] = (refrenceMask[cell.getSpokeIdx()][cell.getCellIdx()] + cell.getCellEcho())/2;
+                            } 
+                         }
+                        fileIndex++;
+                    }//End while
+                    
+                    int row = 0;
+                    int col;
+                    FileWriter writer = new FileWriter(new File("RefRot.txt"));
+                    while(row < refrenceMask.length){
+                        col = 0;
+                        while(col < refrenceMask[row].length){
+                            writer.write(refrenceMask[row][col]+",");
+                            col++;
+                        }
+                        writer.write("\n");
+                        row++;
+                    }
+                }
+                
                 for (RadarSpoke rs : rotation.getSpokes()) {
                     //List l = new <RadarSpoke>ArrayList();
                     //l.add(rs);
                     //process(l);
                     //update the PPI Images if drawing graphics is selected
                     if (ckBxDrawGraphics.isSelected()){
-                        ppiPanel.updatePPIImages(rs, txtBxNumRotForRefRot.getText());
+                        ppiPanel.updatePPIImages(rs, refrenceMask[rs.getSpokeNum()]);
                         lSpokeSeqNums.setText("     Spoke (seq) # : " + rs.getSpokeNum()
                             + " (" + rs.getSeqNum() + ")");
                     lActiveCells.setText("       Active Cells: " + rs.getActiveCellCount());
@@ -344,6 +374,7 @@ public class RadarDisplay {
                     
                     radarWindow.repaint();
                 }
+                
                 lSpokeSeqNums.setText("     Spoke (seq) # :");
                 lActiveCells.setText("       Active Cells: ");
 
@@ -494,7 +525,7 @@ class PPIPanel extends JPanel {
     public Dimension getPreferredSize() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         //return new Dimension(screenSize.height - 200, screenSize.height - 200);
-        return new Dimension(1300, 1500);
+        return new Dimension(1500, 800);
     }//getPreferredSize
 
     public PPIPanel() {
@@ -545,14 +576,9 @@ class PPIPanel extends JPanel {
         repaint();
     }//initialisePPIImages
 
-    public void updatePPIImages(RadarSpoke rs, String strNumRotsForRefRot) {
+    public void updatePPIImages(RadarSpoke rs, int[] refrenceMask) {
         //update the Bufferedimage for the latest spoke
         
-        //testing number of rotations for reference rotation	
-        if(!strNumRotsForRefRot.isEmpty()){
-            Integer.parseInt(strNumRotsForRefRot);
-        }
-
 // Create a graphics which can be used to draw into the buffered image
         Graphics2D ppiImageg = (Graphics2D) ppiFullSizeImage.getGraphics();
         
@@ -568,9 +594,12 @@ class PPIPanel extends JPanel {
         int spokeCellIterator = 0;
         
         for (int cIdx = 0; cIdx < 1024; cIdx++) {
+            
             if(cIdx == rs.getCells().get(spokeCellIterator).getCellIdx()){
                 //System.out.println("cIdx: " + cIdx + " sCI: " + spokeCellIterator + " cellIdx: " + rs.getCells().get(spokeCellIterator).getCellIdx());
                 echoColour = getColours(rs.getCells().get(spokeCellIterator).getCellEcho());
+                if(refrenceMask[cIdx] != 0)
+                    echoColour = new Color(0,0,0);//black
                 spokeCellIterator++;
             }
             else{
@@ -630,24 +659,6 @@ class PPIPanel extends JPanel {
         }                //...
     //System.out.println("Finished UpdatePPIImages");
     }//updatePPIImage
-    
-    private static RadarRotation createRefrenceRotation(int numRotationsToRead){
-        List<File> fileList = Arrays.asList(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\rain_35000m").listFiles());
-        if(fileList.size() == 0)
-            return null;
-        RadarRotation refrenceMask = new RadarRotation(fileList.get(0));
-        int fileIndex = 1;
-        while(fileIndex < numRotationsToRead && fileIndex < fileList.size()){
-            refrenceMask = averageOfRotations(refrenceMask, new RadarRotation(fileList.get(fileIndex)));
-            fileIndex++;
-        }
-        return refrenceMask;
-    }//End createRefrenceRotation
-    
-    private static RadarRotation averageOfRotations(RadarRotation refrenceMask, RadarRotation comparisonRotation){
-        
-        return refrenceMask;
-    }
     
     private static Color getColours(int echo) {
         Color rgb = new Color(0, 0, 0);
@@ -729,8 +740,8 @@ class PPIPanel extends JPanel {
     private void resizePPIImageForDisplay() {
         //ppiDisplayImage = Scalr.resize(ppiFullSizeImage, Scalr.Method.BALANCED, ppiDisplayImage.getWidth(), ppiDisplayImage.getHeight());
 
-        int targetWidth = 1100;
-        int targetHeight = 1100;
+        int targetWidth = 900;
+        int targetHeight = 900;
         float ratio = ((float) ppiFullSizeImage.getHeight() / (float) ppiFullSizeImage.getWidth());
         if (ratio <= 1) { //square or landscape-oriented image
             targetHeight = (int) Math.ceil((float) targetWidth * ratio);
@@ -811,7 +822,7 @@ class PPIPanel extends JPanel {
 
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        g.drawImage(ppiDisplayImage,130, 10, null);
+        g.drawImage(ppiDisplayImage,220, 0, null);
         //Toolkit.getDefaultToolkit().sync();
     }//paintComponent
     
