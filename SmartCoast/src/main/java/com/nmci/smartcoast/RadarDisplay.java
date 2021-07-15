@@ -281,11 +281,11 @@ public class RadarDisplay {
                 for (File file : filesList) {
                     cbRotationFileList.addItem(file.getName());
                 }
-                radarWindow.setTitle(currRadarSession.getSiteName() + " (" 
-                        + currRadarSession.getSiteLat()
-                        + "  " + currRadarSession.getSiteLng() + ",  " + 
-                        currRadarSession.getElevation() + "m)");
-                ppiPanel.initialisePPIImages();
+//                radarWindow.setTitle(currRadarSession.getSiteName() + " (" 
+//                        + currRadarSession.getSiteLat()
+//                        + "  " + currRadarSession.getSiteLng() + ",  " + 
+//                        currRadarSession.getElevation() + "m)");
+//                ppiPanel.initialisePPIImages();
             }
         });
 
@@ -327,34 +327,38 @@ public class RadarDisplay {
                     writer.close();
                 }
                 
-                int[][] refrenceMask = null;
-                if(!txtBxNumRotForRefRot.getText().isEmpty()){
+                RadarRotation refrenceMask = null;
+                if(!txtBxNumRotForRefRot.getText().equals("0")){
                     List<File> fileList = Arrays.asList(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\35000m").listFiles());
-                    refrenceMask = new int[2048][1024];  
+                    refrenceMask = new RadarRotation(fileList.get(0)); 
                     RadarRotation comparisonRotation;
-                    int fileIndex = 0;
-                    while(fileIndex < Integer.parseInt(txtBxNumRotForRefRot.getText()) && fileIndex < fileList.size()){     //loop for going through files in directory
+                    int fileIndex = 1;
+                    int NUM_ROTATIONS = Integer.parseInt(txtBxNumRotForRefRot.getText());
+                    
+                    while(fileIndex < NUM_ROTATIONS && fileIndex < fileList.size()){     //loop through directory
                         comparisonRotation = new RadarRotation(fileList.get(fileIndex));
-                        for(RadarSpoke spoke : comparisonRotation.getSpokes()){
-                            for(RadarCell cell : spoke.getCells()){
-                                refrenceMask[cell.getSpokeIdx()][cell.getCellIdx()] = (refrenceMask[cell.getSpokeIdx()][cell.getCellIdx()] + cell.getCellEcho())/2;
+                        System.out.println(fileIndex);
+                        
+                        for(int spokeIndex = 0; spokeIndex < refrenceMask.getSpokes().size(); spokeIndex++){         //loop through spokes
+                            RadarSpoke spoke = refrenceMask.getSpokes().get(spokeIndex);
+                            if(spoke.getSpokeNum() >= comparisonRotation.getSpokes().size())
+                                break;
+                            
+                            int[] comparisonSpokeArray = new int[1024];
+                            RadarSpoke comparisonSpoke = comparisonRotation.getSpokes().get(spoke.getSpokeNum());
+                            
+                            for(RadarCell cell : comparisonSpoke.getCells()){
+                                comparisonSpokeArray[cell.getCellIdx()] = cell.getCellEcho();
                             } 
-                         }
+                            
+                            for(int i = 0; i < spoke.getCells().size(); i++){   //loop through cells
+                                RadarCell cell = spoke.getCells().get(i);
+                                cell.setCellEcho((cell.getCellEcho()+comparisonSpokeArray[cell.getCellIdx()])/2);
+                            }
+                         }//End spoke for
                         fileIndex++;
                     }//End while
-                    
-                    int row = 0;
-                    int col;
-                    FileWriter writer = new FileWriter(new File("RefRot.txt"));
-                    while(row < refrenceMask.length){
-                        col = 0;
-                        while(col < refrenceMask[row].length){
-                            writer.write(refrenceMask[row][col]+",");
-                            col++;
-                        }
-                        writer.write("\n");
-                        row++;
-                    }
+                    System.out.println("finished");
                 }
                 
                 for (RadarSpoke rs : rotation.getSpokes()) {
@@ -363,7 +367,7 @@ public class RadarDisplay {
                     //process(l);
                     //update the PPI Images if drawing graphics is selected
                     if (ckBxDrawGraphics.isSelected()){
-                        ppiPanel.updatePPIImages(rs, refrenceMask[rs.getSpokeNum()]);
+                        ppiPanel.updatePPIImages(rs, refrenceMask.getSpokes().get(rs.getSpokeNum()));
                         lSpokeSeqNums.setText("     Spoke (seq) # : " + rs.getSpokeNum()
                             + " (" + rs.getSeqNum() + ")");
                     lActiveCells.setText("       Active Cells: " + rs.getActiveCellCount());
@@ -576,7 +580,7 @@ class PPIPanel extends JPanel {
         repaint();
     }//initialisePPIImages
 
-    public void updatePPIImages(RadarSpoke rs, int[] refrenceMask) {
+    public void updatePPIImages(RadarSpoke rs, RadarSpoke refrenceMask) {
         //update the Bufferedimage for the latest spoke
         
 // Create a graphics which can be used to draw into the buffered image
@@ -593,13 +597,20 @@ class PPIPanel extends JPanel {
         int[] scrCoOrds;
         int spokeCellIterator = 0;
         
+        int[] refrenceMaskArray = new int[1024];
+        ArrayList<RadarCell> cells = refrenceMask.getCells();
+        for(RadarCell cell : cells){
+            refrenceMaskArray[cell.getCellIdx()] = cell.getCellEcho();
+        }
+        
         for (int cIdx = 0; cIdx < 1024; cIdx++) {
             
             if(cIdx == rs.getCells().get(spokeCellIterator).getCellIdx()){
                 //System.out.println("cIdx: " + cIdx + " sCI: " + spokeCellIterator + " cellIdx: " + rs.getCells().get(spokeCellIterator).getCellIdx());
                 echoColour = getColours(rs.getCells().get(spokeCellIterator).getCellEcho());
-                if(refrenceMask[cIdx] != 0)
-                    echoColour = new Color(0,0,0);//black
+                if(refrenceMaskArray[cIdx] != 0){
+                    echoColour = new Color(0,0,0);
+                }
                 spokeCellIterator++;
             }
             else{

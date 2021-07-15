@@ -16,14 +16,14 @@ class RadarTarget {
     String exteralTag; //a means to cross-reference this target to an external data source like AIS, ADSB etc. 
     int[] centroidAsSpokeIDCellID;
     Position centroidAsLatLng;
-    int sizeAsCellCount;
+    int sizeAsCellCount; //use
     int areaAsM2;
     int volumeAsM3;
     int minRange;
     int maxRange;
     int minBearing;
     int maxBearing;
-    double avEchoStrength;
+    double avEchoStrength; //use
     double minEchoStrength;
     double maxEchoStrength;
     int designation; //see RadarTargetTable for constants

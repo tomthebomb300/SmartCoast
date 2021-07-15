@@ -35,6 +35,10 @@ class RadarCell {
         return echo;
     }
     
+    public void setCellEcho(int echo){
+        this.echo = echo;
+    }
+    
     @Override
     public String toString(){
         return String.valueOf(getCellIdx()); //"s:" + getSpokeIdx() + " c:" + getCellIdx() + " e:" + getCellEcho();
