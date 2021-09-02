@@ -56,11 +56,11 @@ public class RadarDisplay {
     private static int fileSkipStep;
     private static JLabel lMPerCell, lRangeIR, lSpokeSeqNums,
                           lActiveCells, lNumRotFiles, lRot, lDate, lTime, lWarning, lNum, 
-                          lNumRotForRefRot, lthreshold, lNumRotForWetRot;
+                          lNumRotForRefRot, lthreshold, lNumRotForWetRot, lFadeout;
     private static JButton bLoad, bStepFwd, bStepBck, bRun, bStop, bClear;
     private static JComboBox cbDirectoryList, cbRotationFileList, cbFileSkipStep;
     private static JCheckBox ckBxDrawGraphics, ckBxApplyRefMask;
-    private static JTextField txtBxNumRotForRefRot, threshold, txtBxNumRotForWetRot;
+    private static JTextField txtBxNumRotForRefRot, txtBxthreshold, txtBxNumRotForWetRot, txtBxFadeout;
     private static PPIPanel ppiPanel;
     private static SwingWorker swPMR;
     
@@ -95,6 +95,7 @@ public class RadarDisplay {
         lNumRotForRefRot = new JLabel("Num rots for refrence rot?");
         lthreshold = new JLabel("Threshold?");
         lNumRotForWetRot = new JLabel("Num rots for wet?");
+        lFadeout = new JLabel("fade out distance?");
 
         cbDirectoryList = new JComboBox();
         cbDirectoryList.setBounds(5, 10, 230, 30);
@@ -155,6 +156,11 @@ public class RadarDisplay {
         lNumRotForWetRot.setForeground(Color.YELLOW);
         lNumRotForWetRot.setFont(font);
         
+        lFadeout.setBounds(25, 650, 200, 30);
+        lFadeout.setBackground(Color.BLACK);
+        lFadeout.setForeground(Color.YELLOW);
+        lFadeout.setFont(font);
+        
         font = new Font("Courier", Font.BOLD, 14);
         lWarning = new JLabel("Warnings: Nil");
         lWarning.setBounds(900, 10, 500, 30);
@@ -192,7 +198,7 @@ public class RadarDisplay {
         ckBxDrawGraphics.setFont(font);
         
         ckBxApplyRefMask = new JCheckBox("Apply Refrence Mask?");
-        ckBxApplyRefMask.setBounds(25, 650, 200, 30);
+        ckBxApplyRefMask.setBounds(25, 710, 200, 30);
         ckBxApplyRefMask.setSelected(false);
         ckBxApplyRefMask.setBackground(Color.BLACK);
         ckBxApplyRefMask.setForeground(Color.YELLOW);
@@ -210,11 +216,14 @@ public class RadarDisplay {
         txtBxNumRotForRefRot = new JTextField("0");
         txtBxNumRotForRefRot.setBounds(25, 500, 50, 30);
         
-        threshold = new JTextField("0.0");
-        threshold.setBounds(25, 560, 50, 30);
+        txtBxthreshold = new JTextField("0.3");
+        txtBxthreshold.setBounds(25, 560, 50, 30);
         
         txtBxNumRotForWetRot = new JTextField("0");
         txtBxNumRotForWetRot.setBounds(25, 620, 50, 30);
+        
+        txtBxFadeout = new JTextField("0.0");
+        txtBxFadeout.setBounds(25, 680, 50, 30);
 
         directoryPath = new File (BASE_DIR);
         
@@ -241,9 +250,11 @@ public class RadarDisplay {
         radarWindow.add(lNumRotForRefRot);
         radarWindow.add(lthreshold);
         radarWindow.add(lNumRotForWetRot);
+        radarWindow.add(lFadeout);
         radarWindow.add(txtBxNumRotForRefRot);
-        radarWindow.add(threshold);
+        radarWindow.add(txtBxthreshold);
         radarWindow.add(txtBxNumRotForWetRot);
+        radarWindow.add(txtBxFadeout);
 
         bLoad.addActionListener((ActionEvent e) -> {
             CountDownLatch latch = new CountDownLatch(0);
@@ -287,7 +298,7 @@ public class RadarDisplay {
             ckBxDrawGraphics.setSelected(true);
             ckBxApplyRefMask.setSelected(false);
             txtBxNumRotForRefRot.setText("0");
-            threshold.setText("0.0");
+            txtBxthreshold.setText("0.3");
             txtBxNumRotForWetRot.setText("0");
             radarWindow.setTitle("SmartC0ast...");
         });
@@ -363,145 +374,9 @@ public class RadarDisplay {
                 RadarRotation refrenceMask = null;
                 if(ckBxApplyRefMask.isSelected()){
                     
-                    List<File> fileList = Arrays.asList(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\35000m").listFiles());
-                    refrenceMask = new RadarRotation(fileList.get(0)); 
-                    RadarRotation comparisonRotation;
-                    
-                    int fileIndex = 1;
-                    int NUM_ROTATIONS = Integer.parseInt(txtBxNumRotForRefRot.getText());
-                    int NUM_ROTATIONS_WET = Integer.parseInt(txtBxNumRotForWetRot.getText());
-                    int[][] count = new int[2048][1024];
-                    int[][] maxValues = new int[2048][1024];
-                    
-                    //set all cells maxValue to there current echo value + increment active cells into 2d count
-                    ArrayList<RadarSpoke> spokes = refrenceMask.getSpokes();
-                    for(int spokeIndex = 0; spokeIndex < spokes.size(); spokeIndex++){
-                        ArrayList<RadarCell> cells = spokes.get(spokeIndex).getCells();
-                        for(int cellIndex = 0; cellIndex < cells.size(); cellIndex++){
-                            RadarCell cell = cells.get(cellIndex);
-                            count[cell.spokeIdx][cell.cellIdx] = 1;
-                            maxValues[cell.spokeIdx][cell.cellIdx] = cell.echo;
-                        }
-                    }
-                    
-                    //loop to create refrence mask and count activity in cells and track max values of cells
-                    while(fileIndex < NUM_ROTATIONS && fileIndex < fileList.size()){     //loop through directory
-                        lNumRotForRefRot.setText(Integer.toString(fileIndex));
-                        comparisonRotation = new RadarRotation(fileList.get(fileIndex));
-                        ArrayList<RadarSpoke> comparisonSpokes = comparisonRotation.getSpokes();
-                        
-                        for(int spokeIndex = 0; spokeIndex < spokes.size(); spokeIndex++){         //loop through spokes
-                            
-                            if(comparisonSpokes.size() < spokes.size())
-                                break;
-                            
-                            ArrayList<RadarCell> cells = spokes.get(spokeIndex).getCells();
-                            ArrayList<RadarCell> comparisonCells = comparisonSpokes.get(spokes.get(spokeIndex).getSpokeNum()).getCells();
-                            
-                            for(RadarCell ComparisonCell : comparisonCells){                    //loop through cells
-                                
-                                if(count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] == 0){    //if cell is new
-                                    cells.add(ComparisonCell);
-                                    maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ComparisonCell.echo;
-                                }
-                                else if(ComparisonCell.echo > maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx]){    //if ComparisonCell has value greater then maxValue
-                                    maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ComparisonCell.echo;
-                                    
-                                    //find cell in refrenceMask and change echo value
-                                    for(int i = 0; i < cells.size(); i++){
-                                        if(cells.get(i).cellIdx == ComparisonCell.cellIdx){
-                                            cells.get(i).echo = ComparisonCell.echo; 
-                                            break;
-                                        }
-                                    }
-                                }
-                                count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ++count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx];
-                            }//End comparisonCell for
-                        }//End spoke for
-                        fileIndex++;
-                    }//End while
-                    lNumRotForRefRot.setText("Num rots for refrence rot?");
-
-                    //threshold is decimal for percentage
-                    double THRESHOLD = (Double.parseDouble(threshold.getText()))*NUM_ROTATIONS;
-                    
-                    //if count below threshhold remove from refrenceMask
-                    for(RadarSpoke spoke : spokes){
-                        ArrayList<RadarCell> cells = spoke.getCells();
-                        ArrayList<RadarCell> cellsRemove = new ArrayList<RadarCell>();
-                        
-                        for(RadarCell cell : cells){
-                            if(count[cell.spokeIdx][cell.cellIdx] < THRESHOLD){
-                                 cellsRemove.add(cell);
-                            }
-                        }
-                        cells.removeAll(cellsRemove);
-                    }
-                    
-                    //Rotations with rain showers may include higher echos from cells
-                    fileList = Arrays.asList(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\rain_35000m").listFiles());
-                    comparisonRotation = null;
-                    fileIndex = 0;
-                    //using maxValues and count
-                    
-                    //loop to eliminate higher cell values then the max value.
-                    while(fileIndex < NUM_ROTATIONS_WET && fileIndex < fileList.size()){
-                        lNumRotForWetRot.setText(Integer.toString(fileIndex));
-                        comparisonRotation = new RadarRotation(fileList.get(fileIndex));
-                        spokes = comparisonRotation.getSpokes();
-                        
-                        for(RadarSpoke spoke : spokes){
-                            ArrayList<RadarCell> cells = spoke.getCells();
-                            
-                            for(RadarCell cell : cells){
-                                
-                                if(maxValues[cell.spokeIdx][cell.cellIdx] < cell.echo && count[cell.spokeIdx][cell.cellIdx] >= THRESHOLD){
-                                    maxValues[cell.spokeIdx][cell.cellIdx] = cell.echo;
-                                    ArrayList<RadarCell> rmCells = refrenceMask.getSpokes().get(spoke.spokeNum).getCells();
- 
-                                    for(int cellIndex = 0; cellIndex < rmCells.size(); cellIndex++){
-                                        RadarCell rmCell = rmCells.get(cellIndex);
-
-                                        if(rmCell.spokeIdx == cell.spokeIdx && rmCell.cellIdx == cell.cellIdx){
-                                            rmCell.echo = cell.echo;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        fileIndex++;
-                    }
-                    lNumRotForWetRot.setText("Num rots for wet?");
-                    
-                    //modify rotation using refrenceMask
-                    int[][] refrenceMask2D = new int[2048][1024];
-                    spokes = refrenceMask.getSpokes();
-                    
-                    for(RadarSpoke spoke : spokes){
-                        ArrayList<RadarCell> cells = spoke.getCells();
-                        
-                        for(RadarCell cell : cells){
-                            refrenceMask2D[cell.spokeIdx][cell.cellIdx] = cell.echo;
-                        }
-                    }
-                    
-                    spokes = rotation.getSpokes();
-                    //loop to go through rotation and apply the mask
-                    for(int spokeIndex = 0; spokeIndex < spokes.size(); spokeIndex++){
-                        ArrayList<RadarCell> cells = spokes.get(spokeIndex).getCells();
-                        ArrayList<RadarCell> cellsRemove = new ArrayList<RadarCell>();
-                        
-                        for(int cellIndex = 0; cellIndex < cells.size(); cellIndex++){
-                            RadarCell cell = cells.get(cellIndex);
-                            
-                            //Leave any cells that have higher value then refrenceMask maxValue
-                            //Remove cells with value less then refrenceMask maxValue
-                            if(cell.echo <= refrenceMask2D[cell.spokeIdx][cell.cellIdx])
-                                cellsRemove.add(cell);
-                        }
-                        cells.removeAll(cellsRemove);
-                        spokes.get(spokeIndex).activeCellCount = cells.size();
-                    }
+                    refrenceMask = createRefMask(refrenceMask, true);//creating dry refrence mask.
+                    refrenceMask = createRefMask(refrenceMask, false);//adding wet rotations to refrence mask. 
+                    applyRefMask(refrenceMask, rotation);//apply the mask to rotation.
                 }
                 
                 for (RadarSpoke rs : rotation.getSpokes()) {
@@ -657,6 +532,178 @@ public class RadarDisplay {
     private static void stopProcessMultipleRotations() {
         swPMR.cancel(true);
     }//stopProcessMultipleRotations
+    
+    private static RadarRotation createRefMask(RadarRotation refrenceMask, boolean dry){
+        List<File> fileList = Arrays.asList(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\35000m").listFiles());
+        refrenceMask = new RadarRotation(fileList.get(0)); 
+        RadarRotation comparisonRotation;
+
+        int fileIndex = 1;
+        int NUM_ROTATIONS = Integer.parseInt(txtBxNumRotForRefRot.getText());
+        int NUM_ROTATIONS_WET = Integer.parseInt(txtBxNumRotForWetRot.getText());
+        //threshold is decimal for percentage
+        double THRESHOLD = (Double.parseDouble(txtBxthreshold.getText()))*NUM_ROTATIONS;
+
+        int[][] count = new int[2048][1024];
+        int[][] maxValues = new int[2048][1024];
+
+        ArrayList<RadarSpoke> spokes = refrenceMask.getSpokes();
+        
+        //jump in if creating dry rotation
+        if(dry){
+            //set all cells maxValue to there current echo value + increment active cells into 2d count
+            for(int spokeIndex = 0; spokeIndex < spokes.size(); spokeIndex++){
+                ArrayList<RadarCell> cells = spokes.get(spokeIndex).getCells();
+
+                for(int cellIndex = 0; cellIndex < cells.size(); cellIndex++){
+                    RadarCell cell = cells.get(cellIndex);
+                    count[cell.spokeIdx][cell.cellIdx] = 1;
+                    maxValues[cell.spokeIdx][cell.cellIdx] = cell.echo;
+                }
+            }
+
+            //loop to create refrence mask and count activity in cells and track max values of cells
+            while(fileIndex < NUM_ROTATIONS && fileIndex < fileList.size()){     //loop through directory
+                lNumRotForRefRot.setText(Integer.toString(fileIndex));
+                comparisonRotation = new RadarRotation(fileList.get(fileIndex));
+                ArrayList<RadarSpoke> comparisonSpokes = comparisonRotation.getSpokes();
+
+                for(int spokeIndex = 0; spokeIndex < spokes.size(); spokeIndex++){         //loop through spokes
+
+                    if(comparisonSpokes.size() < spokes.size())
+                        break;
+
+                    ArrayList<RadarCell> cells = spokes.get(spokeIndex).getCells();
+                    ArrayList<RadarCell> comparisonCells = comparisonSpokes.get(spokes.get(spokeIndex).getSpokeNum()).getCells();
+
+                    for(RadarCell ComparisonCell : comparisonCells){                    //loop through cells
+
+                        if(count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] == 0){    //if cell is new
+                            maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ComparisonCell.echo;
+
+                            if(cells.get(0).cellIdx > ComparisonCell.cellIdx){//put element at start of list
+                                cells.add(0, ComparisonCell);
+                            }
+                            else if(cells.get(cells.size()-1).cellIdx < ComparisonCell.cellIdx){//put element at end of list
+                                cells.add(ComparisonCell);
+                            }
+                            else{
+                                for(int i = 0; i < cells.size()-1; i++){//find correct pos for comparisonCell
+                                    RadarCell c1 = cells.get(i);
+                                    RadarCell c2 = cells.get(i+1);
+
+                                    if(c1.cellIdx < ComparisonCell.cellIdx && c2.cellIdx > ComparisonCell.cellIdx){
+                                        cells.add(i+1, ComparisonCell);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        else if(ComparisonCell.echo > maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx]){    //if ComparisonCell has value greater then maxValue
+                            maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ComparisonCell.echo;
+
+                            //find cell in refrenceMask and change echo value
+                            for(int i = 0; i < cells.size(); i++){
+                                if(cells.get(i).cellIdx == ComparisonCell.cellIdx){
+                                    cells.get(i).echo = ComparisonCell.echo; 
+                                    break;
+                                }
+                            }
+                        }
+                        count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ++count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx];
+                    }//End comparisonCell for
+                }//End spoke for
+                fileIndex++;
+            }//End while
+            lNumRotForRefRot.setText("Num rots for refrence rot?");
+
+            //if count below threshhold remove from refrenceMask
+            for(RadarSpoke spoke : spokes){
+                ArrayList<RadarCell> cells = spoke.getCells();
+                ArrayList<RadarCell> cellsRemove = new ArrayList<RadarCell>();
+
+                for(RadarCell cell : cells){
+                    if(count[cell.spokeIdx][cell.cellIdx] < THRESHOLD){
+                         cellsRemove.add(cell);
+                    }
+                }
+                cells.removeAll(cellsRemove);
+            }
+        }
+        
+        //jump in if creating wet rotation
+        else if(!dry){
+            //Rotations with rain showers may include higher echos from cells
+            fileList = Arrays.asList(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\rain_35000m").listFiles());
+            comparisonRotation = null;
+            fileIndex = 0;
+            //using maxValues and count
+
+            //loop to eliminate higher cell values then the max value using wet rotations.
+            while(fileIndex < NUM_ROTATIONS_WET && fileIndex < fileList.size()){
+                lNumRotForWetRot.setText(Integer.toString(fileIndex));
+                comparisonRotation = new RadarRotation(fileList.get(fileIndex));
+                spokes = comparisonRotation.getSpokes();
+
+                for(RadarSpoke spoke : spokes){
+                    ArrayList<RadarCell> cells = spoke.getCells();
+
+                    for(RadarCell cell : cells){
+
+                        if(maxValues[cell.spokeIdx][cell.cellIdx] < cell.echo && count[cell.spokeIdx][cell.cellIdx] >= THRESHOLD){
+                            maxValues[cell.spokeIdx][cell.cellIdx] = cell.echo;
+                            ArrayList<RadarCell> rmCells = refrenceMask.getSpokes().get(spoke.spokeNum).getCells();
+
+                            for(int cellIndex = 0; cellIndex < rmCells.size(); cellIndex++){
+                                RadarCell rmCell = rmCells.get(cellIndex);
+
+                                if(rmCell.spokeIdx == cell.spokeIdx && rmCell.cellIdx == cell.cellIdx){
+                                    rmCell.echo = cell.echo;
+                                }
+                            }
+                        }
+                    }
+                }
+                fileIndex++;
+            }
+            lNumRotForWetRot.setText("Num rots for wet?");
+        }
+        return refrenceMask;
+    }//createRefMask
+    
+    private static void applyRefMask(RadarRotation refrenceMask, RadarRotation rotation){
+        //The next two loops are part of applying the mask to rotation
+        //modify rotation using refrenceMask
+        int[][] refrenceMask2D = new int[2048][1024];
+        System.out.println(refrenceMask.getSpokes().size());
+        ArrayList<RadarSpoke> spokes = refrenceMask.getSpokes();
+        
+        for(RadarSpoke spoke : spokes){
+            ArrayList<RadarCell> cells = spoke.getCells();
+
+            for(RadarCell cell : cells){
+                refrenceMask2D[cell.spokeIdx][cell.cellIdx] = cell.echo;
+            }
+        }
+        
+        spokes = rotation.getSpokes();
+        //loop to go through rotation and apply the mask
+        for(int spokeIndex = 0; spokeIndex < spokes.size(); spokeIndex++){
+            ArrayList<RadarCell> cells = spokes.get(spokeIndex).getCells();
+            ArrayList<RadarCell> cellsRemove = new ArrayList<RadarCell>();
+
+            for(int cellIndex = 0; cellIndex < cells.size(); cellIndex++){
+                RadarCell cell = cells.get(cellIndex);
+
+                //Leave any cells that have higher value then refrenceMask maxValue
+                //Remove cells with value less then refrenceMask maxValue
+                if(cell.echo <= refrenceMask2D[cell.spokeIdx][cell.cellIdx])
+                    cellsRemove.add(cell);
+            }
+            cells.removeAll(cellsRemove);
+            spokes.get(spokeIndex).activeCellCount = cells.size();
+        }
+    }
 
 }//HalpinRadar
 

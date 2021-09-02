@@ -15,9 +15,9 @@ class RadarSpoke {
 
     int spokeNum;
     int seqNum;
-    float mPC;
-    float overscanRange;
-    float instrumentedRange;
+    float mPC;//M
+    float overscanRange;//KM
+    float instrumentedRange;//KM
     int activeCellCount;
     ArrayList<RadarCell> cells;
 
