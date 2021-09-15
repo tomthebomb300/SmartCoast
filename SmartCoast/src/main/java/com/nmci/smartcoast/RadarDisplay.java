@@ -56,11 +56,11 @@ public class RadarDisplay {
     private static int fileSkipStep;
     private static JLabel lMPerCell, lRangeIR, lSpokeSeqNums,
                           lActiveCells, lNumRotFiles, lRot, lDate, lTime, lWarning, lNum, 
-                          lNumRotForRefRot, lthreshold, lNumRotForWetRot, lFadeout;
-    private static JButton bLoad, bStepFwd, bStepBck, bRun, bStop, bClear;
+                          lNumRotForRefRot, lthreshold, lNumRotForWetRot, lWetThreshold;
+    private static JButton bLoad, bStepFwd, bStepBck, bRun, bStop, bReset, bClear;
     private static JComboBox cbDirectoryList, cbRotationFileList, cbFileSkipStep;
     private static JCheckBox ckBxDrawGraphics, ckBxApplyRefMask;
-    private static JTextField txtBxNumRotForRefRot, txtBxthreshold, txtBxNumRotForWetRot, txtBxFadeout;
+    private static JTextField txtBxNumRotForRefRot, txtBxthreshold, txtBxNumRotForWetRot, txtBxWetThreshold;
     private static PPIPanel ppiPanel;
     private static SwingWorker swPMR;
     
@@ -95,7 +95,7 @@ public class RadarDisplay {
         lNumRotForRefRot = new JLabel("Num rots for refrence rot?");
         lthreshold = new JLabel("Threshold?");
         lNumRotForWetRot = new JLabel("Num rots for wet?");
-        lFadeout = new JLabel("fade out distance?");
+        lWetThreshold = new JLabel("Wet Threshold?");
 
         cbDirectoryList = new JComboBox();
         cbDirectoryList.setBounds(5, 10, 230, 30);
@@ -141,25 +141,25 @@ public class RadarDisplay {
         lActiveCells.setForeground(Color.YELLOW);
         lActiveCells.setFont(font);
         
-        lNumRotForRefRot.setBounds(25, 470, 200, 30);
+        lNumRotForRefRot.setBounds(1250, 40, 200, 30);
         lNumRotForRefRot.setBackground(Color.BLACK);
         lNumRotForRefRot.setForeground(Color.YELLOW);
         lNumRotForRefRot.setFont(font);
         
-        lthreshold.setBounds(25, 530, 200, 30);
+        lthreshold.setBounds(1250, 70, 200, 30);
         lthreshold.setBackground(Color.BLACK);
         lthreshold.setForeground(Color.YELLOW);
         lthreshold.setFont(font);
         
-        lNumRotForWetRot.setBounds(25, 590, 200, 30);
+        lNumRotForWetRot.setBounds(1250, 100, 200, 30);
         lNumRotForWetRot.setBackground(Color.BLACK);
         lNumRotForWetRot.setForeground(Color.YELLOW);
         lNumRotForWetRot.setFont(font);
         
-        lFadeout.setBounds(25, 650, 200, 30);
-        lFadeout.setBackground(Color.BLACK);
-        lFadeout.setForeground(Color.YELLOW);
-        lFadeout.setFont(font);
+        lWetThreshold.setBounds(1250, 130, 200, 30);
+        lWetThreshold.setBackground(Color.BLACK);
+        lWetThreshold.setForeground(Color.YELLOW);
+        lWetThreshold.setFont(font);
         
         font = new Font("Courier", Font.BOLD, 14);
         lWarning = new JLabel("Warnings: Nil");
@@ -198,7 +198,7 @@ public class RadarDisplay {
         ckBxDrawGraphics.setFont(font);
         
         ckBxApplyRefMask = new JCheckBox("Apply Refrence Mask?");
-        ckBxApplyRefMask.setBounds(25, 710, 200, 30);
+        ckBxApplyRefMask.setBounds(25, 500, 200, 30);
         ckBxApplyRefMask.setSelected(false);
         ckBxApplyRefMask.setBackground(Color.BLACK);
         ckBxApplyRefMask.setForeground(Color.YELLOW);
@@ -210,21 +210,24 @@ public class RadarDisplay {
         bStop = new JButton("Stop ||");
         bStop.setBounds(25, 385, 100, 30);
         
+        bReset = new JButton("Reset");
+        bReset.setBounds(25, 425, 100, 30);
+        
         bClear = new JButton("Clear");
-        bClear.setBounds(25, 425, 100, 30);
+        bClear.setBounds(25, 465, 100, 30);
         
         txtBxNumRotForRefRot = new JTextField("0");
-        txtBxNumRotForRefRot.setBounds(25, 500, 50, 30);
+        txtBxNumRotForRefRot.setBounds(1190, 40, 50, 30);
         
-        txtBxthreshold = new JTextField("0.3");
-        txtBxthreshold.setBounds(25, 560, 50, 30);
+        txtBxthreshold = new JTextField("0.0");
+        txtBxthreshold.setBounds(1190, 70, 50, 30);
         
         txtBxNumRotForWetRot = new JTextField("0");
-        txtBxNumRotForWetRot.setBounds(25, 620, 50, 30);
+        txtBxNumRotForWetRot.setBounds(1190, 100, 50, 30);
         
-        txtBxFadeout = new JTextField("0.0");
-        txtBxFadeout.setBounds(25, 680, 50, 30);
-
+        txtBxWetThreshold = new JTextField("0.0");
+        txtBxWetThreshold.setBounds(1190, 130, 50, 30);
+        
         directoryPath = new File (BASE_DIR);
         
         //List of all directories
@@ -250,11 +253,11 @@ public class RadarDisplay {
         radarWindow.add(lNumRotForRefRot);
         radarWindow.add(lthreshold);
         radarWindow.add(lNumRotForWetRot);
-        radarWindow.add(lFadeout);
+        radarWindow.add(lWetThreshold);
         radarWindow.add(txtBxNumRotForRefRot);
         radarWindow.add(txtBxthreshold);
         radarWindow.add(txtBxNumRotForWetRot);
-        radarWindow.add(txtBxFadeout);
+        radarWindow.add(txtBxWetThreshold);
 
         bLoad.addActionListener((ActionEvent e) -> {
             CountDownLatch latch = new CountDownLatch(0);
@@ -282,7 +285,7 @@ public class RadarDisplay {
             stopProcessMultipleRotations();
         });
         
-        bClear.addActionListener((ActionEvent e) -> {
+        bReset.addActionListener((ActionEvent e) -> {
             currRadarSession = null;
             filesList = null;
             lRangeIR.setText("       Range (I.R.):");
@@ -297,10 +300,16 @@ public class RadarDisplay {
             lRot.setText("Rotation: ");
             ckBxDrawGraphics.setSelected(true);
             ckBxApplyRefMask.setSelected(false);
-            txtBxNumRotForRefRot.setText("0");
+            txtBxNumRotForRefRot.setText("10");
             txtBxthreshold.setText("0.3");
-            txtBxNumRotForWetRot.setText("0");
+            txtBxNumRotForWetRot.setText("10");
+            txtBxWetThreshold.setText("0.3");
             radarWindow.setTitle("SmartC0ast...");
+        });
+        
+        bClear.addActionListener((ActionEvent e) -> {
+           ppiPanel.clearDisplay();
+           radarWindow.repaint();
         });
         
         cbRotationFileList.addActionListener(new ActionListener() {
@@ -341,6 +350,7 @@ public class RadarDisplay {
         radarWindow.add(bRun);
         radarWindow.add(ckBxDrawGraphics);
         radarWindow.add(bStop);
+        radarWindow.add(bReset);
         radarWindow.add(bClear);
         radarWindow.add(ckBxApplyRefMask);
 
@@ -373,10 +383,24 @@ public class RadarDisplay {
                 
                 RadarRotation refrenceMask = null;
                 if(ckBxApplyRefMask.isSelected()){
+                    int numRotations = Integer.parseInt(txtBxNumRotForRefRot.getText());
                     
-                    refrenceMask = createRefMask(refrenceMask, true);//creating dry refrence mask.
-                    refrenceMask = createRefMask(refrenceMask, false);//adding wet rotations to refrence mask. 
-                    applyRefMask(refrenceMask, rotation);//apply the mask to rotation.
+                    //creating refrenceMask using dry rotations.
+                    RadarRotation dryMask = createRefrenceMask(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\35000m"),
+                                                            (Double.parseDouble(txtBxthreshold.getText()))*numRotations,
+                                                            numRotations);
+                    
+                    numRotations = Integer.parseInt(txtBxNumRotForWetRot.getText());
+                    
+                    //creating refrenceMask using wet rotations.
+                    RadarRotation wetMask = createRefrenceMask(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\rain_35000m"),
+                                                            (Double.parseDouble(txtBxWetThreshold.getText()))*numRotations,
+                                                            numRotations);
+                    
+                    //combine the two masks adding the edges and higher echo values to the dry mask. 
+                    refrenceMask = addEdgesAndMaxValues(dryMask, wetMask);
+                    //apply the refrenceMask to the rotation
+                    applyRefMask(refrenceMask, rotation);
                 }
                 
                 for (RadarSpoke rs : rotation.getSpokes()) {
@@ -533,154 +557,164 @@ public class RadarDisplay {
         swPMR.cancel(true);
     }//stopProcessMultipleRotations
     
-    private static RadarRotation createRefMask(RadarRotation refrenceMask, boolean dry){
-        List<File> fileList = Arrays.asList(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\35000m").listFiles());
-        refrenceMask = new RadarRotation(fileList.get(0)); 
+    private static RadarRotation createRefrenceMask(File file, Double THRESHOLD, int NUM_ROTATIONS){
+        //This method will create all refrence masks
+        
+        List<File> fileList = Arrays.asList(file.listFiles());
         RadarRotation comparisonRotation;
-
-        int fileIndex = 1;
-        int NUM_ROTATIONS = Integer.parseInt(txtBxNumRotForRefRot.getText());
-        int NUM_ROTATIONS_WET = Integer.parseInt(txtBxNumRotForWetRot.getText());
-        //threshold is decimal for percentage
-        double THRESHOLD = (Double.parseDouble(txtBxthreshold.getText()))*NUM_ROTATIONS;
-
-        int[][] count = new int[2048][1024];
-        int[][] maxValues = new int[2048][1024];
-
+        RadarRotation refrenceMask = new RadarRotation(fileList.get(0));
         ArrayList<RadarSpoke> spokes = refrenceMask.getSpokes();
         
-        //jump in if creating dry rotation
-        if(dry){
-            //set all cells maxValue to there current echo value + increment active cells into 2d count
-            for(int spokeIndex = 0; spokeIndex < spokes.size(); spokeIndex++){
-                ArrayList<RadarCell> cells = spokes.get(spokeIndex).getCells();
+        int fileIndex = 1;
+        int[][] count = new int[2048][1024];
+        int[][] maxValues = new int[2048][1024];
+        
+        //set all cells maxValue to there current echo value + increment active cells into 2d count
+        for(RadarSpoke spoke : spokes){
+            ArrayList<RadarCell> cells = spoke.getCells();
 
-                for(int cellIndex = 0; cellIndex < cells.size(); cellIndex++){
-                    RadarCell cell = cells.get(cellIndex);
-                    count[cell.spokeIdx][cell.cellIdx] = 1;
-                    maxValues[cell.spokeIdx][cell.cellIdx] = cell.echo;
-                }
+            for(RadarCell cell : cells){
+                maxValues[cell.spokeIdx][cell.cellIdx] = cell.echo;
+                count[cell.spokeIdx][cell.cellIdx] = 1;
             }
+        }
+        
+        //loop to craete mask.
+        while(fileIndex < NUM_ROTATIONS && fileIndex < fileList.size()){
+            comparisonRotation = new RadarRotation(fileList.get(fileIndex));
+            ArrayList<RadarSpoke> comparisonSpokes = comparisonRotation.getSpokes();
 
-            //loop to create refrence mask and count activity in cells and track max values of cells
-            while(fileIndex < NUM_ROTATIONS && fileIndex < fileList.size()){     //loop through directory
-                lNumRotForRefRot.setText(Integer.toString(fileIndex));
-                comparisonRotation = new RadarRotation(fileList.get(fileIndex));
-                ArrayList<RadarSpoke> comparisonSpokes = comparisonRotation.getSpokes();
+            //loop to cycle through spokes;
+            for(int spokeIndex = 0; spokeIndex < spokes.size(); spokeIndex++){
+                RadarSpoke spoke = spokes.get(spokeIndex);
 
-                for(int spokeIndex = 0; spokeIndex < spokes.size(); spokeIndex++){         //loop through spokes
+                //loop to find the same spoke as refrenceMask spoke and compare;
+                for(RadarSpoke comparisonSpoke : comparisonSpokes){
 
-                    if(comparisonSpokes.size() < spokes.size())
-                        break;
+                    //jump in if spokeNum matches.
+                    if(comparisonSpoke.spokeNum == spoke.spokeNum){
+                        ArrayList<RadarCell> cells = spoke.getCells();
+                        ArrayList<RadarCell> comparisonCells = comparisonSpoke.getCells();
 
-                    ArrayList<RadarCell> cells = spokes.get(spokeIndex).getCells();
-                    ArrayList<RadarCell> comparisonCells = comparisonSpokes.get(spokes.get(spokeIndex).getSpokeNum()).getCells();
+                        //loop through comparisonCells and count activity and record new cells and maxValues
+                        for(RadarCell ComparisonCell : comparisonCells){
 
-                    for(RadarCell ComparisonCell : comparisonCells){                    //loop through cells
-
-                        if(count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] == 0){    //if cell is new
-                            maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ComparisonCell.echo;
-
-                            if(cells.get(0).cellIdx > ComparisonCell.cellIdx){//put element at start of list
-                                cells.add(0, ComparisonCell);
+                            if(count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] == 0){    //if cell is new
+                                maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ComparisonCell.echo;
+                                insertCell(cells, ComparisonCell);
                             }
-                            else if(cells.get(cells.size()-1).cellIdx < ComparisonCell.cellIdx){//put element at end of list
-                                cells.add(ComparisonCell);
-                            }
-                            else{
-                                for(int i = 0; i < cells.size()-1; i++){//find correct pos for comparisonCell
-                                    RadarCell c1 = cells.get(i);
-                                    RadarCell c2 = cells.get(i+1);
+                            else if(ComparisonCell.echo > maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx]){    //if ComparisonCell has value greater then maxValue
+                                maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ComparisonCell.echo;
 
-                                    if(c1.cellIdx < ComparisonCell.cellIdx && c2.cellIdx > ComparisonCell.cellIdx){
-                                        cells.add(i+1, ComparisonCell);
+                                //find cell in refrenceMask and change echo value
+                                for(int i = 0; i < cells.size(); i++){
+                                    if(cells.get(i).cellIdx == ComparisonCell.cellIdx){
+                                        cells.get(i).echo = ComparisonCell.echo; 
                                         break;
                                     }
                                 }
                             }
+                            count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx]++;
                         }
-                        else if(ComparisonCell.echo > maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx]){    //if ComparisonCell has value greater then maxValue
-                            maxValues[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ComparisonCell.echo;
-
-                            //find cell in refrenceMask and change echo value
-                            for(int i = 0; i < cells.size(); i++){
-                                if(cells.get(i).cellIdx == ComparisonCell.cellIdx){
-                                    cells.get(i).echo = ComparisonCell.echo; 
-                                    break;
-                                }
-                            }
-                        }
-                        count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx] = ++count[ComparisonCell.spokeIdx][ComparisonCell.cellIdx];
-                    }//End comparisonCell for
-                }//End spoke for
-                fileIndex++;
-            }//End while
-            lNumRotForRefRot.setText("Num rots for refrence rot?");
-
-            //if count below threshhold remove from refrenceMask
-            for(RadarSpoke spoke : spokes){
-                ArrayList<RadarCell> cells = spoke.getCells();
-                ArrayList<RadarCell> cellsRemove = new ArrayList<RadarCell>();
-
-                for(RadarCell cell : cells){
-                    if(count[cell.spokeIdx][cell.cellIdx] < THRESHOLD){
-                         cellsRemove.add(cell);
+                        break;
                     }
                 }
-                cells.removeAll(cellsRemove);
             }
+            fileIndex++;
         }
-        
-        //jump in if creating wet rotation
-        else if(!dry){
-            //Rotations with rain showers may include higher echos from cells
-            fileList = Arrays.asList(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\rain_35000m").listFiles());
-            comparisonRotation = null;
-            fileIndex = 0;
-            //using maxValues and count
 
-            //loop to eliminate higher cell values then the max value using wet rotations.
-            while(fileIndex < NUM_ROTATIONS_WET && fileIndex < fileList.size()){
-                lNumRotForWetRot.setText(Integer.toString(fileIndex));
-                comparisonRotation = new RadarRotation(fileList.get(fileIndex));
-                spokes = comparisonRotation.getSpokes();
 
-                for(RadarSpoke spoke : spokes){
-                    ArrayList<RadarCell> cells = spoke.getCells();
+        //if count below THRESHOLD remove from wetRefrenceMask
+        for(RadarSpoke spoke : spokes){
+            ArrayList<RadarCell> cells = spoke.getCells();
+            ArrayList<RadarCell> cellsRemove = new ArrayList<RadarCell>();
 
-                    for(RadarCell cell : cells){
-
-                        if(maxValues[cell.spokeIdx][cell.cellIdx] < cell.echo && count[cell.spokeIdx][cell.cellIdx] >= THRESHOLD){
-                            maxValues[cell.spokeIdx][cell.cellIdx] = cell.echo;
-                            ArrayList<RadarCell> rmCells = refrenceMask.getSpokes().get(spoke.spokeNum).getCells();
-
-                            for(int cellIndex = 0; cellIndex < rmCells.size(); cellIndex++){
-                                RadarCell rmCell = rmCells.get(cellIndex);
-
-                                if(rmCell.spokeIdx == cell.spokeIdx && rmCell.cellIdx == cell.cellIdx){
-                                    rmCell.echo = cell.echo;
-                                }
-                            }
-                        }
-                    }
+            for(RadarCell cell : cells){
+                if(count[cell.spokeIdx][cell.cellIdx] < THRESHOLD){
+                     cellsRemove.add(cell);
                 }
-                fileIndex++;
             }
-            lNumRotForWetRot.setText("Num rots for wet?");
+            cells.removeAll(cellsRemove);
         }
         return refrenceMask;
-    }//createRefMask
+    }//createRefrenceMask
+    
+    private static RadarRotation addEdgesAndMaxValues(RadarRotation dryRefrenceMask, RadarRotation wetRefrenceMask){
+        ArrayList<RadarSpoke> spokes = wetRefrenceMask.getSpokes();
+        int[][] wetRefrenceMask2d = new int[2048][1024];
+
+        for(RadarSpoke spoke : spokes){
+            ArrayList<RadarCell> cells = spoke.getCells();
+
+            for(RadarCell cell : cells){
+                wetRefrenceMask2d[cell.spokeIdx][cell.cellIdx] = cell.echo;
+            }
+        }
+        wetRefrenceMask = null;
+        spokes = dryRefrenceMask.getSpokes();
+
+        for(RadarSpoke spoke : spokes){
+            ArrayList<RadarCell> cells = spoke.getCells();
+            ArrayList<RadarCell> cellsAdd = new ArrayList<RadarCell>();
+            int spokeIndex = spoke.spokeNum;
+
+            for(int cellIndex = 0; cellIndex < cells.size()-1; cellIndex++){
+                RadarCell cellA = cells.get(cellIndex);
+                RadarCell cellB = cells.get(cellIndex+1);
+                int wetEcho = wetRefrenceMask2d[cellA.spokeIdx][cellA.cellIdx];
+
+                //if dryRefrenceMask has lower echo value then wetRefrenceMask
+                if(cellA.echo < wetEcho){
+                    cellA.echo = wetEcho;
+                }
+
+                //jump in if edge found
+                if(cellA.cellIdx+1 != cellB.cellIdx){
+                    int distance = cellB.cellIdx-cellA.cellIdx+cellIndex;
+                    if(distance > 15)
+                        distance = 15;
+                    for(int i = cellIndex+1; i < distance; i++){
+                        cellsAdd.add(new RadarCell(spokeIndex, i, wetRefrenceMask2d[spokeIndex][i]));
+                    }
+                }
+            }
+
+            for(RadarCell cell : cellsAdd){
+                insertCell(cells, cell);
+            }
+        }
+        return dryRefrenceMask;
+    }//addEdgesAndMaxValues
+    
+    private static void insertCell(ArrayList<RadarCell> cells, RadarCell cell){
+        if(cells.get(0).cellIdx > cell.cellIdx){//put element at start of list
+            cells.add(0, cell);
+        }
+        else if(cells.get(cells.size()-1).cellIdx < cell.cellIdx){//put element at end of list
+            cells.add(cell);
+        }
+        else{
+            for(int i = 0; i < cells.size()-1; i++){//find correct pos for comparisonCell
+                RadarCell c1 = cells.get(i);
+                RadarCell c2 = cells.get(i+1);
+
+                if(c1.cellIdx < cell.cellIdx && c2.cellIdx > cell.cellIdx){
+                    cells.add(i+1, cell);
+                    break;
+                }
+            }
+        }
+    }//insertCell
     
     private static void applyRefMask(RadarRotation refrenceMask, RadarRotation rotation){
         //The next two loops are part of applying the mask to rotation
         //modify rotation using refrenceMask
         int[][] refrenceMask2D = new int[2048][1024];
-        System.out.println(refrenceMask.getSpokes().size());
         ArrayList<RadarSpoke> spokes = refrenceMask.getSpokes();
         
         for(RadarSpoke spoke : spokes){
             ArrayList<RadarCell> cells = spoke.getCells();
-
+            
             for(RadarCell cell : cells){
                 refrenceMask2D[cell.spokeIdx][cell.cellIdx] = cell.echo;
             }
@@ -691,10 +725,10 @@ public class RadarDisplay {
         for(int spokeIndex = 0; spokeIndex < spokes.size(); spokeIndex++){
             ArrayList<RadarCell> cells = spokes.get(spokeIndex).getCells();
             ArrayList<RadarCell> cellsRemove = new ArrayList<RadarCell>();
-
+            
             for(int cellIndex = 0; cellIndex < cells.size(); cellIndex++){
                 RadarCell cell = cells.get(cellIndex);
-
+                
                 //Leave any cells that have higher value then refrenceMask maxValue
                 //Remove cells with value less then refrenceMask maxValue
                 if(cell.echo <= refrenceMask2D[cell.spokeIdx][cell.cellIdx])
@@ -703,7 +737,7 @@ public class RadarDisplay {
             cells.removeAll(cellsRemove);
             spokes.get(spokeIndex).activeCellCount = cells.size();
         }
-    }
+    }//applyRefMask
 
 }//HalpinRadar
 
@@ -1019,6 +1053,33 @@ class PPIPanel extends JPanel {
         //Toolkit.getDefaultToolkit().sync();
     }//paintComponent
     
+    //Test method;
+    public void clearDisplay(){
+        Graphics2D ppiImageg = (Graphics2D) ppiFullSizeImage.getGraphics();
+        ppiImageg.setColor(new Color(0,0,0));
+        for(int spokeIndex = 0; spokeIndex < 2048; spokeIndex++){
+            for(int cellIndex = 0; cellIndex < 1024; cellIndex++){
+                int[] coor = getScreenCoordinates(spokeIndex, cellIndex);
+                ppiImageg.drawOval(coor[0], coor[1], 3, 3);
+            }
+        }
+        ppiImageg.setColor(Color.yellow);
+        ppiImageg.drawOval(0, 0, 2048, 2048);
+        //reDraw the PPI centre (radar location) crosshair
+        ppiImageg.drawLine((2048 / 2) - 10,
+                2048 / 2,
+                (2048 / 2) + 10,
+                2048 / 2);
+        ppiImageg.drawLine(2048 / 2,
+                (2048 / 2) - 10,
+                2048 / 2,
+                (2048 / 2) + 10);
+        
+        
+        ppiImageg.dispose();
+        resizePPIImageForDisplay();
+
+    }
     
 
 }//MyPanel
