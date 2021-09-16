@@ -63,11 +63,15 @@ public class RadarDisplay {
     private static JTextField txtBxNumRotForRefRot, txtBxthreshold, txtBxNumRotForWetRot, txtBxWetThreshold;
     private static PPIPanel ppiPanel;
     private static SwingWorker swPMR;
+    private static int num;
+    private static int[][] count;
     
     public static void main(String[] argS) {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
+                num = 0;
+                count = new int[2048][1024];
                 createAppWindow();
             }
         });
@@ -213,8 +217,8 @@ public class RadarDisplay {
         bReset = new JButton("Reset");
         bReset.setBounds(25, 425, 100, 30);
         
-        bClear = new JButton("Clear");
-        bClear.setBounds(25, 465, 100, 30);
+        bClear = new JButton("Clear Display");
+        bClear.setBounds(25, 465, 120, 30);
         
         txtBxNumRotForRefRot = new JTextField("0");
         txtBxNumRotForRefRot.setBounds(1190, 40, 50, 30);
@@ -308,8 +312,7 @@ public class RadarDisplay {
         });
         
         bClear.addActionListener((ActionEvent e) -> {
-           ppiPanel.clearDisplay();
-           radarWindow.repaint();
+            clearDisplay();
         });
         
         cbRotationFileList.addActionListener(new ActionListener() {
@@ -360,6 +363,11 @@ public class RadarDisplay {
         radarWindow.pack();
         radarWindow.setVisible(true);
     }//createPPI
+    
+    private static void clearDisplay(){
+        ppiPanel.clearDisplay();
+        radarWindow.repaint();
+    }
 
     private static void processASingleRotation(File rotationFile, CountDownLatch latch) {
         SwingWorker sw1 = new SwingWorker() {
@@ -624,7 +632,7 @@ public class RadarDisplay {
         }
 
 
-        //if count below THRESHOLD remove from wetRefrenceMask
+        //if count below THRESHOLD remove from mask
         for(RadarSpoke spoke : spokes){
             ArrayList<RadarCell> cells = spoke.getCells();
             ArrayList<RadarCell> cellsRemove = new ArrayList<RadarCell>();
@@ -670,11 +678,20 @@ public class RadarDisplay {
 
                 //jump in if edge found
                 if(cellA.cellIdx+1 != cellB.cellIdx){
-                    int distance = cellB.cellIdx-cellA.cellIdx+cellIndex;
+                    int distance = cellB.cellIdx - cellA.cellIdx;
+                    int index = cellA.cellIdx;
+                    
                     if(distance > 15)
                         distance = 15;
-                    for(int i = cellIndex+1; i < distance; i++){
-                        cellsAdd.add(new RadarCell(spokeIndex, i, wetRefrenceMask2d[spokeIndex][i]));
+                    
+                    distance =  distance + index;
+                    
+                    while(++index < distance){
+                        wetEcho = wetRefrenceMask2d[spokeIndex][index];
+                        
+                        if(wetEcho != 0){
+                            cellsAdd.add(new RadarCell(spokeIndex, index, wetEcho));
+                        }
                     }
                 }
             }
@@ -738,6 +755,52 @@ public class RadarDisplay {
             spokes.get(spokeIndex).activeCellCount = cells.size();
         }
     }//applyRefMask
+    
+    private static void printRefrenceMask(RadarRotation mask, String name) throws Exception{
+        FileWriter writer = new FileWriter("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\"+name);
+        int[][] mask2d = new int[2048][1024];
+        
+        ArrayList<RadarSpoke> spokes = mask.getSpokes();
+        
+        for(RadarSpoke spoke : spokes){
+           ArrayList<RadarCell> cells = spoke.getCells();
+
+           for(RadarCell cell : cells){
+              mask2d[cell.spokeIdx][cell.cellIdx] = 1; 
+           }
+        }
+        
+        for(int row = 0; row < 2048; row++){
+               
+               for(int col = 0; col < 1024; col++){
+                   writer.write(mask2d[row][col]+", ");
+               }
+               writer.write("\n");
+           }
+    }
+    private static void testMethodPrint(RadarRotation rotation) throws Exception{
+        ArrayList<RadarSpoke> spokes = rotation.getSpokes();
+        
+        for(RadarSpoke spoke : spokes){
+            ArrayList<RadarCell> cells = spoke.getCells();
+            
+            for(RadarCell cell : cells){
+                count[spoke.spokeNum][cell.cellIdx]++;
+            }
+        }
+        num++;
+        if(num == 8){
+           FileWriter writer = new FileWriter("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\counting.txt"); 
+           
+           for(int row = 0; row < 2048; row++){
+               
+               for(int col = 0; col < 1024; col++){
+                   writer.write(count[row][col]+", ");
+               }
+               writer.write("\n");
+           }
+        }
+    }
 
 }//HalpinRadar
 
