@@ -26,6 +26,7 @@ class RadarRotation {
     ArrayList<RadarSpoke> spokes;
     //Target related information (for this rotation, see RadarSession->masterTargets for the session targetTable)
     RadarTargetTable rotationTargets;
+    private int count;
     
     RadarRotation(File rotationFile) {
         year = rotationFile.getName().substring(0, 4);
@@ -52,28 +53,109 @@ class RadarRotation {
         }
     }//constructor
     
-    public void analyseTargets(){
-//        for each spoke{
-//	extract contiguous echo sequence cells n...m
-//	existing = false
-//	for each existing target{
-//		if n..m has >=1 common cell(s) with spoke s-1 in target
-//			add to existing target
-//			existing = true
-//			break for loop as target found (cell can only be in one target)
-//		}//if
-//	}//for
-//	if existing == false then create new target entry
-//}//for
-  
-    rotationTargets = new RadarTargetTable();
-    
-    for(RadarSpoke rs: spokes)
-    {
-        rotationTargets.updateTargetsFromSpoke(rs);
+    public int[][] get2DArray(){
+        int[][] rotation = null;
+        int spokeIndex = 0;
+        int cellIndex = 0;
+        int numSpokes = spokes.size();
+        int numCells;
+        
+        if(numSpokes != 0 && spokes.get(0) != null){
+            rotation = new int[numSpokes][RadarSpoke.maxCells];
+            
+            while(spokeIndex < numSpokes){
+                RadarSpoke spoke = spokes.get(spokeIndex);
+                ArrayList<RadarCell> cells = spoke.getCells();
+                numCells = cells.size();
+                cellIndex = 0;
+                
+                while(cellIndex < numCells){
+                    RadarCell cell = cells.get(cellIndex);
+                    rotation[cell.spokeIdx][cell.cellIdx] = cell.echo;
+                    cellIndex++;
+                }
+                spokeIndex++;
+            }
+        }
+        
+
+        return rotation;
     }
     
+    public void analyseTargets(){
+        System.out.println("analyzeTargets");
+        int[][] rotation = this.get2DArray();
+        int spokeIndex = 0;
+        int cellIndex;
+        int numSpokes = rotation.length;
+        int numCells;
+        count = 0;
+        
+        ArrayList<RadarTarget> targets = new ArrayList<RadarTarget>();
+        
+        while(spokeIndex < numSpokes){
+            cellIndex = 0;
+            numCells = rotation[spokeIndex].length;
+            
+            while(cellIndex < numCells){
+                
+                if(rotation[spokeIndex][cellIndex] != 0){
+                    ArrayList<RadarCell> targetCells = new ArrayList<RadarCell>();
+                    this.getAllCellsOfTarget(rotation, targetCells, spokeIndex, cellIndex);
+                    RadarTarget target = new RadarTarget(targetCells);
+                    targets.add(target);
+                }
+                cellIndex++;
+            }
+            spokeIndex++;
+        }
+        System.out.println("number of targets: "+targets.size());
     }//analyseTargets
+    
+    //method to test recursion
+    public void recursionTest(){
+        count++;
+        System.out.println("count: "+count);
+        
+        if(count < 5000)
+            recursionTest();
+    }
+    //method to test recursion
+    
+    private void getAllCellsOfTarget(int[][] rotation, ArrayList<RadarCell> targetCells, int spokeIndex, int cellIndex){
+        targetCells.add(new RadarCell(spokeIndex, cellIndex, rotation[spokeIndex][cellIndex]));
+        rotation[spokeIndex][cellIndex] = 0;
+        
+        if(cellIndex > 0 && rotation[spokeIndex][cellIndex-1] != 0){//left
+            --cellIndex;
+        }
+        if(cellIndex < RadarSpoke.maxCells-1 && rotation[spokeIndex][cellIndex+1] != 0){//right
+            ++cellIndex;
+        }
+        if(spokeIndex > 0 && rotation[spokeIndex-1][cellIndex] != 0){//top
+            --spokeIndex;
+        }
+        if(spokeIndex < rotation.length-1 && rotation[spokeIndex+1][cellIndex] != 0){//bottom
+            ++spokeIndex;
+        }
+        if(spokeIndex > 0 && cellIndex > 0 && rotation[spokeIndex-1][cellIndex-1] != 0){//left top
+            --spokeIndex;
+            --cellIndex;
+        }
+        if(spokeIndex > 0 && cellIndex < RadarSpoke.maxCells-1 && rotation[spokeIndex-1][cellIndex+1] != 0){//right top
+            --spokeIndex;
+            ++cellIndex;
+        }
+        if(spokeIndex < rotation.length-1 && cellIndex > 0 && rotation[spokeIndex+1][cellIndex-1] != 0){//left bottom
+            ++spokeIndex;
+            --cellIndex;
+        }
+        if(spokeIndex < rotation.length-1 && cellIndex < rotation.length-1 && rotation[spokeIndex+1][cellIndex+1] != 0){//right bottom
+            ++spokeIndex;
+            ++cellIndex;
+        }
+        this.getAllCellsOfTarget(rotation, targetCells, spokeIndex, cellIndex);
+    }//getAllCellsOfTarget
     
     
     

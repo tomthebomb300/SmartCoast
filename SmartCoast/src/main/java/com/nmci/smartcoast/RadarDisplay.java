@@ -63,20 +63,33 @@ public class RadarDisplay {
     private static JTextField txtBxNumRotForRefRot, txtBxthreshold, txtBxNumRotForWetRot, txtBxWetThreshold;
     private static PPIPanel ppiPanel;
     private static SwingWorker swPMR;
+    
+    //testing attributes
     private static int num;
-    private static int[][] count;
+    //testing attributes
     
     public static void main(String[] argS) {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                num = 0;
-                count = new int[2048][1024];
-                createAppWindow();
+                //testing
+                recursionTest();
+                System.out.println("RadarDisplay Recursion Complete");
+                //testing
+                createAppWindow();  
             }
         });
     }//main
+    
+    private static void recursionTest(){
+        num++;
+        System.out.println("num: "+num);
+        if(num < 5000){
+            recursionTest();
+        }
 
+    }
+    
     private static void createAppWindow() {
         
         radarWindow = new JFrame("SmartCoast...");
@@ -347,7 +360,7 @@ public class RadarDisplay {
 
         //add buttons to the App window
         radarWindow.add(bLoad);
-         radarWindow.add(cbFileSkipStep);
+        radarWindow.add(cbFileSkipStep);
         radarWindow.add(bStepFwd);
         radarWindow.add(bStepBck);
         radarWindow.add(bRun);
@@ -410,6 +423,11 @@ public class RadarDisplay {
                     //apply the refrenceMask to the rotation
                     applyRefMask(refrenceMask, rotation);
                 }
+                
+                //calling recursion function
+                rotation.recursionTest();
+                System.out.println("Rotation Recursion Complete");
+                //calling recursion function
                 
                 for (RadarSpoke rs : rotation.getSpokes()) {
                     //List l = new <RadarSpoke>ArrayList();
@@ -778,30 +796,6 @@ public class RadarDisplay {
                writer.write("\n");
            }
     }
-    private static void testMethodPrint(RadarRotation rotation) throws Exception{
-        ArrayList<RadarSpoke> spokes = rotation.getSpokes();
-        
-        for(RadarSpoke spoke : spokes){
-            ArrayList<RadarCell> cells = spoke.getCells();
-            
-            for(RadarCell cell : cells){
-                count[spoke.spokeNum][cell.cellIdx]++;
-            }
-        }
-        num++;
-        if(num == 8){
-           FileWriter writer = new FileWriter("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\counting.txt"); 
-           
-           for(int row = 0; row < 2048; row++){
-               
-               for(int col = 0; col < 1024; col++){
-                   writer.write(count[row][col]+", ");
-               }
-               writer.write("\n");
-           }
-        }
-    }
-
 }//HalpinRadar
 
 

@@ -11,7 +11,7 @@ import java.util.ArrayList;
  *
  * @author cormac
  */
-class RadarSpoke {
+public class RadarSpoke {
 
     int spokeNum;
     int seqNum;
@@ -20,6 +20,7 @@ class RadarSpoke {
     float instrumentedRange;//KM
     int activeCellCount;
     ArrayList<RadarCell> cells;
+    public static int maxCells = 1024;
 
     RadarSpoke(String spokeDataStr) {
          String[] spokeDataArray = spokeDataStr.split(" ");

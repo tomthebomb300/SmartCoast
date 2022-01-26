@@ -16,14 +16,14 @@ class RadarTarget {
     String exteralTag; //a means to cross-reference this target to an external data source like AIS, ADSB etc. 
     int[] centroidAsSpokeIDCellID;
     Position centroidAsLatLng;
-    int sizeAsCellCount; //use
+    int sizeAsCellCount;
     int areaAsM2;
     int volumeAsM3;
     int minRange;
     int maxRange;
     int minBearing;
     int maxBearing;
-    double avEchoStrength; //use
+    double avEchoStrength;
     double minEchoStrength;
     double maxEchoStrength;
     int designation; //see RadarTargetTable for constants
@@ -34,14 +34,18 @@ class RadarTarget {
     double decayRate; //over x rotations/seconds how quickly the echo is decaying in area
     double persistance; //over x rotations/seconds how many is the echo present
     double stability; //over x rotations/seconds, how unchanging is the echo
-    SpokeCellList latest;
-    SpokeCellList outline;
-    SpokeCellList[] history;
+    ArrayList<RadarCell> latest;
+    ArrayList<RadarCell> outline;
+    ArrayList<RadarTarget> history;
     
-    RadarTarget(ArrayList tp){
+    RadarTarget(ArrayList tp, int[][] getRid){
         //creates a new target from a target part
         
     }//constructor
+    
+    RadarTarget(ArrayList<RadarCell> latest){
+        this.latest = latest;
+    }
     
     public boolean targetPartOverlaps(ArrayList tp){
 //        if(){
@@ -64,20 +68,4 @@ class RadarTarget {
     
    
     //GET RID OF SPOKE CELL LIST - NOT NEEDED DUE MODIFIED RADARCELL CLASS
-    
-    class SpokeCellList {
-//    "spokeCellList" structure:
-//[
-//[spokeID,[cellIDHexVal,cellIDHexVal,...],
-//...,
-//[spokeID,[cellIDHexVal,cellIDHexVal,...]
-//]
-}//SpokeCellList
-
-    class SpokeCell{
-        int spokeID;
-        RadarCell cell;
-
-
-    }//SpokeCell
 }//RadarTarget

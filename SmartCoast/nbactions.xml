@@ -10,11 +10,12 @@
                 <goal>org.codehaus.mojo:exec-maven-plugin:3.0.0:exec</goal>
             </goals>
             <properties>
-                <exec.args>${exec.vmArgs}  ${exec.mainClass} ${exec.appArgs} -classpath %classpath ${packageClassName} ${exec.vmArgs} -classpath %classpath ${exec.mainClass} ${exec.appArgs}-target 12</exec.args>
+                <exec.args>${exec.vmArgs} -classpath %classpath ${exec.mainClass} ${exec.appArgs}</exec.args>
                 <exec.executable>java</exec.executable>
-                <exec.mainClass>com.nmci.smartcoast.RadarSpoke</exec.mainClass>
+                <exec.mainClass>com.nmci.smartcoast.RadarDisplay</exec.mainClass>
                 <exec.vmArgs></exec.vmArgs>
-                <exec.appArgs></exec.appArgs>
+                <exec.appArgs>-Xss8000m</exec.appArgs>
+                <exec.workingdir>C:\Users\Thomas O Callaghan\NMCI Placement\SmartCoast\SmartCoast</exec.workingdir>
             </properties>
         </action>
         <action>
@@ -27,12 +28,13 @@
                 <goal>org.codehaus.mojo:exec-maven-plugin:3.0.0:exec</goal>
             </goals>
             <properties>
-                <exec.args>-agentlib:jdwp=transport=dt_socket,server=n,address=${jpda.address} ${exec.vmArgs}  ${exec.mainClass} ${exec.appArgs} -classpath %classpath ${packageClassName} ${exec.vmArgs} -classpath %classpath ${exec.mainClass} ${exec.appArgs}-target 12</exec.args>
+                <exec.args>${exec.vmArgs} -classpath %classpath ${exec.mainClass} ${exec.appArgs}</exec.args>
                 <exec.executable>java</exec.executable>
                 <jpda.listen>true</jpda.listen>
-                <exec.mainClass>com.nmci.smartcoast.RadarSpoke</exec.mainClass>
+                <exec.mainClass>com.nmci.smartcoast.RadarDisplay</exec.mainClass>
                 <exec.vmArgs>-agentlib:jdwp=transport=dt_socket,server=n,address=${jpda.address}</exec.vmArgs>
-                <exec.appArgs></exec.appArgs>
+                <exec.appArgs>-Xss8000m</exec.appArgs>
+                <exec.workingdir>C:\Users\Thomas O Callaghan\NMCI Placement\SmartCoast\SmartCoast</exec.workingdir>
             </properties>
         </action>
         <action>
@@ -45,11 +47,12 @@
                 <goal>org.codehaus.mojo:exec-maven-plugin:3.0.0:exec</goal>
             </goals>
             <properties>
-                <exec.args>${exec.vmArgs}  ${exec.mainClass} ${exec.appArgs} -classpath %classpath ${packageClassName} ${exec.vmArgs} -classpath %classpath ${exec.mainClass} ${exec.appArgs}-target 12</exec.args>
+                <exec.args>${exec.vmArgs} -classpath %classpath ${exec.mainClass} ${exec.appArgs}</exec.args>
                 <exec.executable>java</exec.executable>
-                <exec.mainClass>com.nmci.smartcoast.RadarSpoke</exec.mainClass>
+                <exec.mainClass>com.nmci.smartcoast.RadarDisplay</exec.mainClass>
                 <exec.vmArgs></exec.vmArgs>
-                <exec.appArgs></exec.appArgs>
+                <exec.appArgs>-Xss8000m</exec.appArgs>
+                <exec.workingdir>C:\Users\Thomas O Callaghan\NMCI Placement\SmartCoast\SmartCoast</exec.workingdir>
             </properties>
         </action>
     </actions>

@@ -1,0 +1,2 @@
+Method = 'addEdgesAndMaxValues' inside this method if the distance of an edge is greater then 15 cells it sets it to 15 so to not run into candadite targets.
+Rain showers get cut off over land.
