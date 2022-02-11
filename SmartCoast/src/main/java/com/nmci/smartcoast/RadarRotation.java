@@ -26,7 +26,9 @@ class RadarRotation {
     ArrayList<RadarSpoke> spokes;
     //Target related information (for this rotation, see RadarSession->masterTargets for the session targetTable)
     RadarTargetTable rotationTargets;
-    private int count;
+    private long recursionCount;
+    private int[][] rotation;
+    
     
     RadarRotation(File rotationFile) {
         year = rotationFile.getName().substring(0, 4);
@@ -46,118 +48,177 @@ class RadarRotation {
                 RadarSpoke rs = new RadarSpoke(sc.nextLine());
                 spokes.add(rs);
             }
-            //System.out.println("Number of spokes: " + spokes.size());
-
         } catch (Exception e) {
 
         }
     }//constructor
     
-    public int[][] get2DArray(){
-        int[][] rotation = null;
+    public void findTargets(){
+        ArrayList<RadarTarget> targets = new ArrayList<RadarTarget>();
+        int targetId = 0;
+        
+        int numSplits = 1;
+        ArrayList<int[][]> splits = this.splitRotation(numSplits, true);
+        
         int spokeIndex = 0;
         int cellIndex = 0;
-        int numSpokes = spokes.size();
-        int numCells;
+        int caught = 0;
+        int splitIndex = 0;        
         
-        if(numSpokes != 0 && spokes.get(0) != null){
-            rotation = new int[numSpokes][RadarSpoke.maxCells];
+        for(int[][] split : splits){
+            spokeIndex = 0;
+            rotation = split;
+            ArrayList<RadarTarget> splitsTargets = new ArrayList<RadarTarget>();
             
-            while(spokeIndex < numSpokes){
-                RadarSpoke spoke = spokes.get(spokeIndex);
-                ArrayList<RadarCell> cells = spoke.getCells();
-                numCells = cells.size();
+            while(spokeIndex < split.length){
                 cellIndex = 0;
-                
-                while(cellIndex < numCells){
-                    RadarCell cell = cells.get(cellIndex);
-                    rotation[cell.spokeIdx][cell.cellIdx] = cell.echo;
+
+                while(cellIndex < split[spokeIndex].length){
+                    
+                    if(split[spokeIndex][cellIndex] != 0){
+                        ArrayList<RadarCell> cells = new ArrayList<RadarCell>();
+
+                        try{
+                            while(!findCellsOfTarget(cells, spokeIndex, cellIndex, 0)){
+                                RadarCell lastCell = cells.get(cells.size()-1);
+                                spokeIndex = lastCell.spokeIdx;
+                                cellIndex = lastCell.cellIdx;
+                            }
+                        }
+                        catch(StackOverflowError error){
+                            caught++;
+                        }
+
+                        RadarTarget target = new RadarTarget(cells, ++targetId);
+                        target.assignAttributes(spokes.get(0).mPC, spokes.get(0).overscanRange, spokes.size());
+                        splitsTargets.add(target);
+                    }
                     cellIndex++;
                 }
                 spokeIndex++;
             }
+            splitIndex++;
+            //join targets from split and oldSplit
+            targets.addAll(splitsTargets);
         }
-        
+        System.out.println("targets size: "+targets.size());
+        System.out.println("target 0: "+targets.get(0).latest.size());
+        System.out.println("caught: "+caught);
+    }
 
-        return rotation;
+
+    private boolean findCellsOfTarget(ArrayList<RadarCell> target, int spokeIndex, int cellIndex, int recursiveCount) throws StackOverflowError{
+        target.add(new RadarCell(spokeIndex-1, cellIndex-1, rotation[spokeIndex][cellIndex]));
+        rotation[spokeIndex][cellIndex] = 0;
+        
+        if(++recursiveCount == 3000)
+            return false;
+        
+        
+        //left
+        if(rotation[spokeIndex][cellIndex-1] != 0){
+            boolean targetFound = findCellsOfTarget(target, spokeIndex, cellIndex-1, recursiveCount);
+            
+            if(!targetFound)
+                return false;
+        }
+
+        //right
+        if(rotation[spokeIndex][cellIndex+1] != 0){
+            boolean targetFound = findCellsOfTarget(target, spokeIndex, cellIndex+1, recursiveCount);
+            
+             if(!targetFound)
+                return false;
+        }
+
+        //top
+        if(rotation[spokeIndex-1][cellIndex] != 0){
+            boolean targetFound = findCellsOfTarget(target, spokeIndex-1, cellIndex, recursiveCount);
+            
+             if(!targetFound)
+                return false;
+        }
+
+        //bottom
+        if(rotation[spokeIndex+1][cellIndex] != 0){
+            boolean targetFound = findCellsOfTarget(target, spokeIndex+1, cellIndex, recursiveCount);
+            
+             if(!targetFound)
+                return false;
+        }
+
+        //top left
+        if(rotation[spokeIndex-1][cellIndex-1] != 0){
+            boolean targetFound = findCellsOfTarget(target, spokeIndex-1, cellIndex-1, recursiveCount);
+            
+             if(!targetFound)
+                return false;
+        }
+
+        //top right
+        if(rotation[spokeIndex-1][cellIndex+1] != 0){
+            boolean targetFound = findCellsOfTarget(target, spokeIndex-1, cellIndex+1, recursiveCount);
+            
+             if(!targetFound)
+                return false;
+        }
+
+        //bottom left
+        if(rotation[spokeIndex+1][cellIndex-1] != 0){
+            boolean targetFound = findCellsOfTarget(target, spokeIndex+1, cellIndex-1, recursiveCount);
+            
+             if(!targetFound)
+                return false;
+        }
+
+        //bottom right
+        if(rotation[spokeIndex+1][cellIndex+1] != 0){
+            boolean targetFound = findCellsOfTarget(target, spokeIndex+1, cellIndex+1, recursiveCount);
+            
+             if(!targetFound)
+                return false;
+        }
+        return true;
+    }
+    
+    private ArrayList<int[][]> splitRotation(int numSplits, boolean padding){
+        ArrayList<int[][]> splits = new ArrayList<int[][]>();
+        int pad = 0;
+        
+        if(padding)
+            pad = 1;
+        int splitIndex = 0;
+        int spokeIndex = 0;
+        int cellIndex;
+
+
+        //split iterate
+        while(splitIndex < numSplits){
+            int[][] split = new int[(spokes.size()/numSplits)+(pad*2)][RadarSpoke.maxCells+(pad*2)];
+            
+            //spoke iterate
+            while(spokeIndex < spokes.size() && spokes.get(spokeIndex).spokeNum < spokes.size()/numSplits*(splitIndex+1)){
+                cellIndex = 0;
+                ArrayList<RadarCell> cells = spokes.get(spokeIndex).getCells();
+                
+                //cell iterate
+                while(cellIndex < cells.size()){
+                    RadarCell cell = cells.get(cellIndex);
+                    split[(cell.spokeIdx % (spokes.size()/numSplits))+pad][cell.cellIdx+pad] = cell.echo;
+                    cellIndex++;
+                }//end cell
+                spokeIndex++;
+            }//end spoke
+            splits.add(split);
+            splitIndex++;
+        }//end split
+        
+        return splits;
     }
     
     public void analyseTargets(){
-        System.out.println("analyzeTargets");
-        int[][] rotation = this.get2DArray();
-        int spokeIndex = 0;
-        int cellIndex;
-        int numSpokes = rotation.length;
-        int numCells;
-        count = 0;
         
-        ArrayList<RadarTarget> targets = new ArrayList<RadarTarget>();
-        
-        while(spokeIndex < numSpokes){
-            cellIndex = 0;
-            numCells = rotation[spokeIndex].length;
-            
-            while(cellIndex < numCells){
-                
-                if(rotation[spokeIndex][cellIndex] != 0){
-                    ArrayList<RadarCell> targetCells = new ArrayList<RadarCell>();
-                    this.getAllCellsOfTarget(rotation, targetCells, spokeIndex, cellIndex);
-                    RadarTarget target = new RadarTarget(targetCells);
-                    targets.add(target);
-                }
-                cellIndex++;
-            }
-            spokeIndex++;
-        }
-        System.out.println("number of targets: "+targets.size());
     }//analyseTargets
-    
-    //method to test recursion
-    public void recursionTest(){
-        count++;
-        System.out.println("count: "+count);
-        
-        if(count < 5000)
-            recursionTest();
-    }
-    //method to test recursion
-    
-    private void getAllCellsOfTarget(int[][] rotation, ArrayList<RadarCell> targetCells, int spokeIndex, int cellIndex){
-        targetCells.add(new RadarCell(spokeIndex, cellIndex, rotation[spokeIndex][cellIndex]));
-        rotation[spokeIndex][cellIndex] = 0;
-        
-        if(cellIndex > 0 && rotation[spokeIndex][cellIndex-1] != 0){//left
-            --cellIndex;
-        }
-        if(cellIndex < RadarSpoke.maxCells-1 && rotation[spokeIndex][cellIndex+1] != 0){//right
-            ++cellIndex;
-        }
-        if(spokeIndex > 0 && rotation[spokeIndex-1][cellIndex] != 0){//top
-            --spokeIndex;
-        }
-        if(spokeIndex < rotation.length-1 && rotation[spokeIndex+1][cellIndex] != 0){//bottom
-            ++spokeIndex;
-        }
-        if(spokeIndex > 0 && cellIndex > 0 && rotation[spokeIndex-1][cellIndex-1] != 0){//left top
-            --spokeIndex;
-            --cellIndex;
-        }
-        if(spokeIndex > 0 && cellIndex < RadarSpoke.maxCells-1 && rotation[spokeIndex-1][cellIndex+1] != 0){//right top
-            --spokeIndex;
-            ++cellIndex;
-        }
-        if(spokeIndex < rotation.length-1 && cellIndex > 0 && rotation[spokeIndex+1][cellIndex-1] != 0){//left bottom
-            ++spokeIndex;
-            --cellIndex;
-        }
-        if(spokeIndex < rotation.length-1 && cellIndex < rotation.length-1 && rotation[spokeIndex+1][cellIndex+1] != 0){//right bottom
-            ++spokeIndex;
-            ++cellIndex;
-        }
-        this.getAllCellsOfTarget(rotation, targetCells, spokeIndex, cellIndex);
-    }//getAllCellsOfTarget
-    
-    
     
     public String getDate(){
         return rotationDate;

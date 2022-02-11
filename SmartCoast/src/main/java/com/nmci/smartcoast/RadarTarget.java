@@ -17,10 +17,10 @@ class RadarTarget {
     int[] centroidAsSpokeIDCellID;
     Position centroidAsLatLng;
     int sizeAsCellCount;
-    int areaAsM2;
+    double areaAsM2;
     int volumeAsM3;
-    int minRange;
-    int maxRange;
+    double minRange;
+    double maxRange;
     int minBearing;
     int maxBearing;
     double avEchoStrength;
@@ -40,11 +40,55 @@ class RadarTarget {
     
     RadarTarget(ArrayList tp, int[][] getRid){
         //creates a new target from a target part
-        
     }//constructor
     
-    RadarTarget(ArrayList<RadarCell> latest){
-        this.latest = latest;
+    RadarTarget(ArrayList<RadarCell> target, int targetId){
+        latest = target;
+        this.targetID = targetId;
+    }
+    
+    public void assignAttributes(float mPC, float overscanRange, int numSpokes){
+        areaAsM2 = 0;
+        
+        int minCellIndex = RadarSpoke.maxCells+1;
+        int maxCellIndex = -1;
+        
+        int echoTotal = 0;
+        avEchoStrength = -1;
+        minEchoStrength = 16;
+        maxEchoStrength = -1;
+        
+        for(RadarCell cell : latest){
+            float rSC = cell.cellIdx*mPC;
+            float rBC = cell.cellIdx+1*mPC;
+            
+            double aSC = Math.PI*(rSC*rSC);
+            double aBC = Math.PI*(rBC*rBC);
+            
+            double iA = aBC-aSC;
+            double cA = ((360/numSpokes)/360)*iA;
+            areaAsM2 = areaAsM2 + cA;
+            
+            if(cell.cellIdx < minCellIndex)
+                minCellIndex = cell.cellIdx;
+            
+            if(cell.cellIdx > maxCellIndex)
+                maxCellIndex = cell.cellIdx;
+            
+            echoTotal = echoTotal + cell.echo;
+            
+            if(cell.echo > maxEchoStrength)
+                maxEchoStrength = cell.echo;
+            
+            if(cell.echo < minEchoStrength)
+                minEchoStrength = cell.echo;
+            
+        }
+        
+        minRange = mPC*minCellIndex;
+        maxRange = mPC*maxCellIndex;
+        
+        avEchoStrength = echoTotal/latest.size();
     }
     
     public boolean targetPartOverlaps(ArrayList tp){

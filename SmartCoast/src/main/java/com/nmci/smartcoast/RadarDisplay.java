@@ -64,31 +64,15 @@ public class RadarDisplay {
     private static PPIPanel ppiPanel;
     private static SwingWorker swPMR;
     
-    //testing attributes
-    private static int num;
-    //testing attributes
     
     public static void main(String[] argS) {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                //testing
-                recursionTest();
-                System.out.println("RadarDisplay Recursion Complete");
-                //testing
                 createAppWindow();  
             }
         });
     }//main
-    
-    private static void recursionTest(){
-        num++;
-        System.out.println("num: "+num);
-        if(num < 5000){
-            recursionTest();
-        }
-
-    }
     
     private static void createAppWindow() {
         
@@ -233,16 +217,16 @@ public class RadarDisplay {
         bClear = new JButton("Clear Display");
         bClear.setBounds(25, 465, 120, 30);
         
-        txtBxNumRotForRefRot = new JTextField("0");
+        txtBxNumRotForRefRot = new JTextField("20");
         txtBxNumRotForRefRot.setBounds(1190, 40, 50, 30);
         
-        txtBxthreshold = new JTextField("0.0");
+        txtBxthreshold = new JTextField("0.5");
         txtBxthreshold.setBounds(1190, 70, 50, 30);
         
-        txtBxNumRotForWetRot = new JTextField("0");
+        txtBxNumRotForWetRot = new JTextField("20");
         txtBxNumRotForWetRot.setBounds(1190, 100, 50, 30);
         
-        txtBxWetThreshold = new JTextField("0.0");
+        txtBxWetThreshold = new JTextField("0.5");
         txtBxWetThreshold.setBounds(1190, 130, 50, 30);
         
         directoryPath = new File (BASE_DIR);
@@ -383,8 +367,12 @@ public class RadarDisplay {
     }
 
     private static void processASingleRotation(File rotationFile, CountDownLatch latch) {
+        
+        RadarRotation r = new RadarRotation(rotationFile);
+        r.findTargets();
+        
         SwingWorker sw1 = new SwingWorker() {
-
+            
             @Override
             protected String doInBackground() throws Exception {
 
@@ -424,10 +412,7 @@ public class RadarDisplay {
                     applyRefMask(refrenceMask, rotation);
                 }
                 
-                //calling recursion function
-                rotation.recursionTest();
-                System.out.println("Rotation Recursion Complete");
-                //calling recursion function
+//                rotation.findTargets();
                 
                 for (RadarSpoke rs : rotation.getSpokes()) {
                     //List l = new <RadarSpoke>ArrayList();
@@ -466,9 +451,9 @@ public class RadarDisplay {
         // executes the swingworker on worker thread
         sw1.execute();
 
-    }//processASingleRotation    
-    
-    
+    }//processASingleRotation   
+
+
     private static void stepForwardNRotations() {
         setFileSkipStep();
         CountDownLatch latch = new CountDownLatch(0);

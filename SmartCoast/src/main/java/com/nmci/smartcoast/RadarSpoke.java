@@ -30,7 +30,7 @@ public class RadarSpoke {
         //System.out.println(this.summarise());
         mPC = Float.valueOf(spokeDataArray[2]) / 1000;
         //System.out.println(this.summarise());
-        overscanRange = mPC * 1024 / 1000;
+        overscanRange = mPC * 1024;
         //System.out.println(this.summarise());
         instrumentedRange = overscanRange / (float) 1.8;
         //System.out.println(this.summarise());

@@ -14,7 +14,7 @@
                 <exec.executable>java</exec.executable>
                 <exec.mainClass>com.nmci.smartcoast.RadarDisplay</exec.mainClass>
                 <exec.vmArgs></exec.vmArgs>
-                <exec.appArgs>-Xss8000m</exec.appArgs>
+                <exec.appArgs>-Xss2000m</exec.appArgs>
                 <exec.workingdir>C:\Users\Thomas O Callaghan\NMCI Placement\SmartCoast\SmartCoast</exec.workingdir>
             </properties>
         </action>
@@ -33,7 +33,7 @@
                 <jpda.listen>true</jpda.listen>
                 <exec.mainClass>com.nmci.smartcoast.RadarDisplay</exec.mainClass>
                 <exec.vmArgs>-agentlib:jdwp=transport=dt_socket,server=n,address=${jpda.address}</exec.vmArgs>
-                <exec.appArgs>-Xss8000m</exec.appArgs>
+                <exec.appArgs>-Xss2000m</exec.appArgs>
                 <exec.workingdir>C:\Users\Thomas O Callaghan\NMCI Placement\SmartCoast\SmartCoast</exec.workingdir>
             </properties>
         </action>
@@ -51,7 +51,7 @@
                 <exec.executable>java</exec.executable>
                 <exec.mainClass>com.nmci.smartcoast.RadarDisplay</exec.mainClass>
                 <exec.vmArgs></exec.vmArgs>
-                <exec.appArgs>-Xss8000m</exec.appArgs>
+                <exec.appArgs>-Xss2000m</exec.appArgs>
                 <exec.workingdir>C:\Users\Thomas O Callaghan\NMCI Placement\SmartCoast\SmartCoast</exec.workingdir>
             </properties>
         </action>
