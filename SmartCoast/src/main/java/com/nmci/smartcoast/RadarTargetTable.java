@@ -24,8 +24,8 @@ class RadarTargetTable {
     
     ArrayList<RadarTarget> targets;
     
-    RadarTargetTable(){
-       targets = new <RadarTarget>ArrayList();
+    RadarTargetTable(ArrayList<RadarTarget> targets){
+       this.targets = targets;
     }//constructor
     
     //used by RadarRotation->rotationTargets
@@ -44,7 +44,7 @@ class RadarTargetTable {
             }
             if(found == false){
                 //add as new target
-                targets.add(new RadarTarget(tp));
+//                targets.add(new RadarTarget(tp));
             }
         }
     }//updateTargetsFromSpoke

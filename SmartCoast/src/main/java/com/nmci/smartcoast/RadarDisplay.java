@@ -368,8 +368,8 @@ public class RadarDisplay {
 
     private static void processASingleRotation(File rotationFile, CountDownLatch latch) {
         
-        RadarRotation r = new RadarRotation(rotationFile);
-        r.findTargets();
+//        RadarRotation r = new RadarRotation(rotationFile);
+//        r.findTargets();
         
         SwingWorker sw1 = new SwingWorker() {
             
@@ -412,7 +412,7 @@ public class RadarDisplay {
                     applyRefMask(refrenceMask, rotation);
                 }
                 
-//                rotation.findTargets();
+                rotation.findTargets();
                 
                 for (RadarSpoke rs : rotation.getSpokes()) {
                     //List l = new <RadarSpoke>ArrayList();

@@ -6,8 +6,24 @@
 package com.nmci.smartcoast;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Scanner;
 import java.util.ArrayList;
+import org.apache.poi.hssf.util.HSSFColor;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import com.opencsv.CSVWriter;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.InputStreamReader;
 
 /**
  *
@@ -68,7 +84,6 @@ class RadarRotation {
         for(int[][] split : splits){
             spokeIndex = 0;
             rotation = split;
-            ArrayList<RadarTarget> splitsTargets = new ArrayList<RadarTarget>();
             
             while(spokeIndex < split.length){
                 cellIndex = 0;
@@ -77,12 +92,15 @@ class RadarRotation {
                     
                     if(split[spokeIndex][cellIndex] != 0){
                         ArrayList<RadarCell> cells = new ArrayList<RadarCell>();
-
+                        
                         try{
-                            while(!findCellsOfTarget(cells, spokeIndex, cellIndex, 0)){
-                                RadarCell lastCell = cells.get(cells.size()-1);
-                                spokeIndex = lastCell.spokeIdx;
-                                cellIndex = lastCell.cellIdx;
+                            ArrayList<RadarCell> notSearched = new ArrayList<RadarCell>();
+                            
+                            while(!findCellsOfTarget(cells, spokeIndex, cellIndex, 0, notSearched) || !notSearched.isEmpty()){
+                                RadarCell firstCell = notSearched.get(0);
+                                notSearched.remove(0);
+                                spokeIndex = firstCell.spokeIdx;
+                                cellIndex = firstCell.cellIdx;
                             }
                         }
                         catch(StackOverflowError error){
@@ -91,96 +109,245 @@ class RadarRotation {
 
                         RadarTarget target = new RadarTarget(cells, ++targetId);
                         target.assignAttributes(spokes.get(0).mPC, spokes.get(0).overscanRange, spokes.size());
-                        splitsTargets.add(target);
+                        targets.add(target);
                     }
                     cellIndex++;
                 }
                 spokeIndex++;
             }
             splitIndex++;
-            //join targets from split and oldSplit
-            targets.addAll(splitsTargets);
         }
+        
+        rotationTargets = new RadarTargetTable(targets);
         System.out.println("targets size: "+targets.size());
-        System.out.println("target 0: "+targets.get(0).latest.size());
-        System.out.println("caught: "+caught);
+        System.out.println("StackOverflow errors caught: "+caught);
+        
+        clusterTargets();
     }
+    
+    //writing targets to csv file + calling python file to cluster them
+    public void clusterTargets(){
+        //write targets to csv
+        try{
+            String csvName = "targets.csv";
+            CSVWriter writer = new CSVWriter(new FileWriter(new File(csvName)));
+            String[] header = {"sizeAsCellCount", "areaAsM2", "minRange", "maxRange", "avEchoStrength", "minEchoStrength", "maxEchoStrength"};
+            writer.writeNext(header);
+            
+            for (RadarTarget target : rotationTargets.targets){
+                String[] data = {Integer.toString(target.sizeAsCellCount), Double.toString(target.areaAsM2), Double.toString(target.minRange), Double.toString(target.minRange), Double.toString(target.avEchoStrength), Double.toString(target.minEchoStrength), Double.toString(target.maxEchoStrength)};
+                writer.writeNext(data);
+            }
+            writer.close();
+            
+            ProcessBuilder builder = new ProcessBuilder("python", "clusterTargets.py", csvName);
+            Process process = builder.start();
+            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            BufferedReader outputReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            
+            String line;
+            
+            while((line = errorReader.readLine())!=null){
+                System.out.println("PYTHON ERROR: "+line);
+            }
+            
+            while((line = outputReader.readLine())!=null){
+                System.out.println(line);
+            }
+            
+            
+            //read data from csv file
+            BufferedReader csvReader = new BufferedReader(new FileReader(csvName));
+            String row = csvReader.readLine();
+            int targetIndex = 0;
+            
+            while((row = csvReader.readLine())!=null){
+                String[] data = row.split(",");
+                rotationTargets.targets.get(targetIndex).cluster = Integer.parseInt(data[data.length-1]);
+                targetIndex++; 
+            }
+            
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+    
+    //***************************
+    //test methods
+    //***************************
+    
+    //print target to console.
+    private void printTarget(RadarTarget target){
+        int[][] r = new int[2048][1024];
+        ArrayList<RadarCell> latest = target.latest;
+        
+        for(RadarCell cell : latest){
+            r[cell.spokeIdx][cell.cellIdx] = cell.echo;
+        }
+        
+        int spokeIndex = 0;
+        int cellIndex;
+        
+        while(spokeIndex < r.length){
+            cellIndex = 0;
+            
+            while(cellIndex < r[spokeIndex].length){
+                System.out.print(r[spokeIndex][cellIndex]);
+                cellIndex++;
+            }
+            System.out.println();
+            spokeIndex++;
+        }
+    }
+    
+    //Create excel file of rotationand highlight the given target
+    private void printTargetExcel(RadarTarget target){
+        ArrayList<int[][]> splits = this.splitRotation(1, false);
+        rotation = splits.get(0);
+        
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet spreadsheet = workbook.createSheet("rotation");
+        XSSFRow Xrow;
+        int r = 0;
+        int c = 0;
+        XSSFCell cell;
+        
+        while(r < rotation.length){
+            Xrow = spreadsheet.createRow(r);
+            c = 0;
+            
+            while(c < rotation[r].length){
+                cell = Xrow.createCell(c);
+                cell.setCellValue(""+rotation[r][c]);
+                c++;
+            }
+            r++;
+        }
+        
+        CellStyle style = workbook.createCellStyle();
+        XSSFFont font = workbook.createFont();
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        font.setColor(HSSFColor.HSSFColorPredefined.WHITE.getIndex());
+        style.setFont(font);
+        
+        ArrayList<RadarCell> latest = target.latest;
+        int latestIndex = 0;
+        
+        while(latestIndex < latest.size()){
+            RadarCell radarCell = latest.get(latestIndex);
+            cell = workbook.getSheetAt(0).getRow(radarCell.spokeIdx).getCell(radarCell.cellIdx);
+            cell.setCellStyle(style);
+            latestIndex++;
+        }
+        
+        try{
+            workbook.write(new FileOutputStream("RotationLargestTarget.xlsx"));
+            workbook.close();
+        } catch(FileNotFoundException e){
+            e.printStackTrace();
+        } catch(IOException e){
+            e.printStackTrace();
+        }   
+    }
+    //***************************
+    //test methods
+    //***************************
 
-
-    private boolean findCellsOfTarget(ArrayList<RadarCell> target, int spokeIndex, int cellIndex, int recursiveCount) throws StackOverflowError{
-        target.add(new RadarCell(spokeIndex-1, cellIndex-1, rotation[spokeIndex][cellIndex]));
+    
+    //method for finding cells of target
+    private boolean findCellsOfTarget(ArrayList<RadarCell> target, int spokeIndex, int cellIndex, int recursiveCount, ArrayList<RadarCell> notSearched) throws StackOverflowError{
+        if(rotation[spokeIndex][cellIndex] != 0)
+            target.add(new RadarCell(spokeIndex-1, cellIndex-1, rotation[spokeIndex][cellIndex]));
         rotation[spokeIndex][cellIndex] = 0;
         
-        if(++recursiveCount == 3000)
+        if(++recursiveCount == 2500)
             return false;
         
         
         //left
         if(rotation[spokeIndex][cellIndex-1] != 0){
-            boolean targetFound = findCellsOfTarget(target, spokeIndex, cellIndex-1, recursiveCount);
+            boolean targetFound = findCellsOfTarget(target, spokeIndex, cellIndex-1, recursiveCount, notSearched);
             
-            if(!targetFound)
+            if(!targetFound){
+                notSearched.add(new RadarCell(spokeIndex, cellIndex, rotation[spokeIndex][cellIndex]));
                 return false;
+            }
         }
 
         //right
         if(rotation[spokeIndex][cellIndex+1] != 0){
-            boolean targetFound = findCellsOfTarget(target, spokeIndex, cellIndex+1, recursiveCount);
+            boolean targetFound = findCellsOfTarget(target, spokeIndex, cellIndex+1, recursiveCount, notSearched);
             
-             if(!targetFound)
+             if(!targetFound){
+                notSearched.add(new RadarCell(spokeIndex, cellIndex, rotation[spokeIndex][cellIndex]));
                 return false;
+            }
         }
 
         //top
         if(rotation[spokeIndex-1][cellIndex] != 0){
-            boolean targetFound = findCellsOfTarget(target, spokeIndex-1, cellIndex, recursiveCount);
+            boolean targetFound = findCellsOfTarget(target, spokeIndex-1, cellIndex, recursiveCount, notSearched);
             
-             if(!targetFound)
+             if(!targetFound){
+                notSearched.add(new RadarCell(spokeIndex, cellIndex, rotation[spokeIndex][cellIndex]));
                 return false;
+            }
         }
 
         //bottom
         if(rotation[spokeIndex+1][cellIndex] != 0){
-            boolean targetFound = findCellsOfTarget(target, spokeIndex+1, cellIndex, recursiveCount);
+            boolean targetFound = findCellsOfTarget(target, spokeIndex+1, cellIndex, recursiveCount, notSearched);
             
-             if(!targetFound)
+             if(!targetFound){
+                notSearched.add(new RadarCell(spokeIndex, cellIndex, rotation[spokeIndex][cellIndex]));
                 return false;
+            }
         }
 
         //top left
         if(rotation[spokeIndex-1][cellIndex-1] != 0){
-            boolean targetFound = findCellsOfTarget(target, spokeIndex-1, cellIndex-1, recursiveCount);
+            boolean targetFound = findCellsOfTarget(target, spokeIndex-1, cellIndex-1, recursiveCount, notSearched);
             
-             if(!targetFound)
+             if(!targetFound){
+                notSearched.add(new RadarCell(spokeIndex, cellIndex, rotation[spokeIndex][cellIndex]));
                 return false;
+            }
         }
 
         //top right
         if(rotation[spokeIndex-1][cellIndex+1] != 0){
-            boolean targetFound = findCellsOfTarget(target, spokeIndex-1, cellIndex+1, recursiveCount);
+            boolean targetFound = findCellsOfTarget(target, spokeIndex-1, cellIndex+1, recursiveCount, notSearched);
             
-             if(!targetFound)
+             if(!targetFound){
+                notSearched.add(new RadarCell(spokeIndex, cellIndex, rotation[spokeIndex][cellIndex]));
                 return false;
+            }
         }
 
         //bottom left
         if(rotation[spokeIndex+1][cellIndex-1] != 0){
-            boolean targetFound = findCellsOfTarget(target, spokeIndex+1, cellIndex-1, recursiveCount);
+            boolean targetFound = findCellsOfTarget(target, spokeIndex+1, cellIndex-1, recursiveCount, notSearched);
             
-             if(!targetFound)
+             if(!targetFound){
+                notSearched.add(new RadarCell(spokeIndex, cellIndex, rotation[spokeIndex][cellIndex]));
                 return false;
+            }
         }
 
         //bottom right
         if(rotation[spokeIndex+1][cellIndex+1] != 0){
-            boolean targetFound = findCellsOfTarget(target, spokeIndex+1, cellIndex+1, recursiveCount);
+            boolean targetFound = findCellsOfTarget(target, spokeIndex+1, cellIndex+1, recursiveCount, notSearched);
             
-             if(!targetFound)
+             if(!targetFound){
+                notSearched.add(new RadarCell(spokeIndex, cellIndex, rotation[spokeIndex][cellIndex]));
                 return false;
+            }
         }
         return true;
     }
     
+    
+    //method that has the optiuon of splitting the rotation and/or adding a padding of 0's around the outside
     private ArrayList<int[][]> splitRotation(int numSplits, boolean padding){
         ArrayList<int[][]> splits = new ArrayList<int[][]>();
         int pad = 0;
