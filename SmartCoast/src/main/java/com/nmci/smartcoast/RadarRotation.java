@@ -69,6 +69,10 @@ class RadarRotation {
         }
     }//constructor
     
+    
+    
+    
+    
     public void findTargets(){
         ArrayList<RadarTarget> targets = new ArrayList<RadarTarget>();
         int targetId = 0;
@@ -76,22 +80,24 @@ class RadarRotation {
         int numSplits = 1;
         ArrayList<int[][]> splits = this.splitRotation(numSplits, true);
         
-        int spokeIndex = 0;
-        int cellIndex = 0;
+        int iteratingSpokeIndex = 0;
+        int iteratingCellIndex = 0;
         int caught = 0;
         int splitIndex = 0;        
         
         for(int[][] split : splits){
-            spokeIndex = 0;
+            iteratingSpokeIndex = 0;
             rotation = split;
             
-            while(spokeIndex < split.length){
-                cellIndex = 0;
+            while(iteratingSpokeIndex < split.length){
+                iteratingCellIndex = 0;
 
-                while(cellIndex < split[spokeIndex].length){
+                while(iteratingCellIndex < split[iteratingSpokeIndex].length){
                     
-                    if(split[spokeIndex][cellIndex] != 0){
+                    if(split[iteratingSpokeIndex][iteratingCellIndex] != 0){
                         ArrayList<RadarCell> cells = new ArrayList<RadarCell>();
+                        int spokeIndex = iteratingSpokeIndex;
+                        int cellIndex = iteratingCellIndex;
                         
                         try{
                             ArrayList<RadarCell> notSearched = new ArrayList<RadarCell>();
@@ -111,19 +117,21 @@ class RadarRotation {
                         target.assignAttributes(spokes.get(0).mPC, spokes.get(0).overscanRange, spokes.size());
                         targets.add(target);
                     }
-                    cellIndex++;
+                    iteratingCellIndex++;
                 }
-                spokeIndex++;
+                iteratingSpokeIndex++;
             }
             splitIndex++;
         }
         
         rotationTargets = new RadarTargetTable(targets);
-        System.out.println("targets size: "+targets.size());
-        System.out.println("StackOverflow errors caught: "+caught);
-        
-        clusterTargets();
+        System.out.println("Number of targets: "+targets.size());
+        System.out.println("StackOverflows during target searching: "+caught);
     }
+    
+    
+    
+    
     
     //writing targets to csv file + calling python file to cluster them
     public void clusterTargets(){
@@ -172,88 +180,8 @@ class RadarRotation {
         }
     }
     
-    //***************************
-    //test methods
-    //***************************
     
-    //print target to console.
-    private void printTarget(RadarTarget target){
-        int[][] r = new int[2048][1024];
-        ArrayList<RadarCell> latest = target.latest;
-        
-        for(RadarCell cell : latest){
-            r[cell.spokeIdx][cell.cellIdx] = cell.echo;
-        }
-        
-        int spokeIndex = 0;
-        int cellIndex;
-        
-        while(spokeIndex < r.length){
-            cellIndex = 0;
-            
-            while(cellIndex < r[spokeIndex].length){
-                System.out.print(r[spokeIndex][cellIndex]);
-                cellIndex++;
-            }
-            System.out.println();
-            spokeIndex++;
-        }
-    }
-    
-    //Create excel file of rotationand highlight the given target
-    private void printTargetExcel(RadarTarget target){
-        ArrayList<int[][]> splits = this.splitRotation(1, false);
-        rotation = splits.get(0);
-        
-        XSSFWorkbook workbook = new XSSFWorkbook();
-        XSSFSheet spreadsheet = workbook.createSheet("rotation");
-        XSSFRow Xrow;
-        int r = 0;
-        int c = 0;
-        XSSFCell cell;
-        
-        while(r < rotation.length){
-            Xrow = spreadsheet.createRow(r);
-            c = 0;
-            
-            while(c < rotation[r].length){
-                cell = Xrow.createCell(c);
-                cell.setCellValue(""+rotation[r][c]);
-                c++;
-            }
-            r++;
-        }
-        
-        CellStyle style = workbook.createCellStyle();
-        XSSFFont font = workbook.createFont();
-        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        font.setColor(HSSFColor.HSSFColorPredefined.WHITE.getIndex());
-        style.setFont(font);
-        
-        ArrayList<RadarCell> latest = target.latest;
-        int latestIndex = 0;
-        
-        while(latestIndex < latest.size()){
-            RadarCell radarCell = latest.get(latestIndex);
-            cell = workbook.getSheetAt(0).getRow(radarCell.spokeIdx).getCell(radarCell.cellIdx);
-            cell.setCellStyle(style);
-            latestIndex++;
-        }
-        
-        try{
-            workbook.write(new FileOutputStream("RotationLargestTarget.xlsx"));
-            workbook.close();
-        } catch(FileNotFoundException e){
-            e.printStackTrace();
-        } catch(IOException e){
-            e.printStackTrace();
-        }   
-    }
-    //***************************
-    //test methods
-    //***************************
-
-    
+     
     //method for finding cells of target
     private boolean findCellsOfTarget(ArrayList<RadarCell> target, int spokeIndex, int cellIndex, int recursiveCount, ArrayList<RadarCell> notSearched) throws StackOverflowError{
         if(rotation[spokeIndex][cellIndex] != 0)
@@ -398,7 +326,185 @@ class RadarRotation {
     public ArrayList<RadarSpoke> getSpokes(){
         return spokes;
     }//getSpokes
-     
+    
+    
+    
+    //***************************
+    //test methods
+    //***************************
+    
+    //print target to console.
+    private static void printTarget(RadarTarget target){
+        int[][] r = new int[2048][1024];
+        ArrayList<RadarCell> latest = target.latest;
+        
+        for(RadarCell cell : latest){
+            r[cell.spokeIdx][cell.cellIdx] = cell.echo;
+        }
+        
+        int spokeIndex = 0;
+        int cellIndex;
+        
+        while(spokeIndex < r.length){
+            cellIndex = 0;
+            
+            while(cellIndex < r[spokeIndex].length){
+                System.out.print(r[spokeIndex][cellIndex]);
+                cellIndex++;
+            }
+            System.out.println();
+            spokeIndex++;
+        }
+    }
+    
+    
+    
+    
+    
+    
+    
+    //Create excel file of rotationand highlight the given target
+    private void printTargetExcel(RadarTarget target){
+        ArrayList<int[][]> splits = this.splitRotation(1, false);
+        rotation = splits.get(0);
+        
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet spreadsheet = workbook.createSheet("rotation");
+        XSSFRow Xrow;
+        int r = 0;
+        int c = 0;
+        XSSFCell cell;
+        
+        while(r < rotation.length){
+            Xrow = spreadsheet.createRow(r);
+            c = 0;
+            
+            while(c < rotation[r].length){
+                cell = Xrow.createCell(c);
+                cell.setCellValue(""+rotation[r][c]);
+                c++;
+            }
+            r++;
+        }
+        
+        CellStyle style = workbook.createCellStyle();
+        XSSFFont font = workbook.createFont();
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        font.setColor(HSSFColor.HSSFColorPredefined.WHITE.getIndex());
+        style.setFont(font);
+        
+        CellStyle styleOutline = workbook.createCellStyle();
+        XSSFFont fontOutline = workbook.createFont();
+        styleOutline.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        fontOutline.setColor(HSSFColor.HSSFColorPredefined.YELLOW.getIndex());
+        styleOutline.setFont(fontOutline);
+        
+        int[][] outline = new int [2048][1024];
+        
+        for(RadarCell radarCell : target.outline){
+            outline[radarCell.spokeIdx][radarCell.cellIdx] = radarCell.echo;
+        }
+        
+        ArrayList<RadarCell> latest = target.latest;
+        int latestIndex = 0;
+        
+        while(latestIndex < latest.size()){
+            RadarCell radarCell = latest.get(latestIndex);
+            cell = workbook.getSheetAt(0).getRow(radarCell.spokeIdx).getCell(radarCell.cellIdx);
+            if(outline[radarCell.spokeIdx][radarCell.cellIdx] != 0)
+                cell.setCellStyle(styleOutline);
+            else
+                cell.setCellStyle(style);
+            latestIndex++;
+        }
+        
+        try{
+            workbook.write(new FileOutputStream("Target1NoRefMask.xlsx"));
+            workbook.close();
+        } catch(FileNotFoundException e){
+            e.printStackTrace();
+        } catch(IOException e){
+            e.printStackTrace();
+        }   
+    }
+    
+    
+    
+    
+    
+    private void printAllTargetsExcel(){
+        ArrayList<int[][]> splits = this.splitRotation(1, false);
+        rotation = splits.get(0);
+        
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet spreadsheet = workbook.createSheet("rotation");
+        XSSFRow Xrow;
+        int r = 0;
+        int c = 0;
+        XSSFCell cell;
+        
+        while(r < rotation.length){
+            Xrow = spreadsheet.createRow(r);
+            c = 0;
+            
+            while(c < rotation[r].length){
+                cell = Xrow.createCell(c);
+                cell.setCellValue(""+rotation[r][c]);
+                c++;
+            }
+            r++;
+        }
+        
+        CellStyle style = workbook.createCellStyle();
+        XSSFFont font = workbook.createFont();
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        font.setColor(HSSFColor.HSSFColorPredefined.WHITE.getIndex());
+        style.setFont(font);
+        
+        CellStyle styleOutline = workbook.createCellStyle();
+        XSSFFont fontOuline = workbook.createFont();
+        styleOutline.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        fontOuline.setColor(HSSFColor.HSSFColorPredefined.YELLOW.getIndex());
+        styleOutline.setFont(fontOuline);
+        
+        for (RadarTarget target : rotationTargets.targets){
+            ArrayList<RadarCell> latest = target.latest;
+            
+            int[][] outline = new int[2048][1024];
+            
+            for(RadarCell radarCell : target.outline){
+                outline[radarCell.spokeIdx][radarCell.cellIdx] = radarCell.echo;
+            }
+            
+            int latestIndex = 0;
+
+            while(latestIndex < latest.size()){
+                RadarCell radarCell = latest.get(latestIndex);
+                cell = workbook.getSheetAt(0).getRow(radarCell.spokeIdx).getCell(radarCell.cellIdx);
+                
+                if(outline[radarCell.spokeIdx][radarCell.cellIdx] != 0){
+                    cell.setCellStyle(styleOutline);
+                }
+                else{
+                    cell.setCellStyle(style);
+                }
+                latestIndex++;
+            }
+        }
+        
+        
+        try{
+            workbook.write(new FileOutputStream("AllTargetsWithOutlineHighlighted.xlsx"));
+            workbook.close();
+        } catch(FileNotFoundException e){
+            e.printStackTrace();
+        } catch(IOException e){
+            e.printStackTrace();
+        }   
+    }
+    //***************************
+    //test methods
+    //***************************
     
     
     

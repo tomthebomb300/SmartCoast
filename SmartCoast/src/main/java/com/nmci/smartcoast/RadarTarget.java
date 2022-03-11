@@ -35,6 +35,11 @@ class RadarTarget {
     double persistance; //over x rotations/seconds how many is the echo present
     double stability; //over x rotations/seconds, how unchanging is the echo
     int cluster;
+    int sCI;
+    int lCI;
+    int sSI;
+    int lSI;
+    int recursionCount;
     ArrayList<RadarCell> latest;
     ArrayList<RadarCell> outline;
     ArrayList<RadarTarget> history;
@@ -48,6 +53,11 @@ class RadarTarget {
         this.targetID = targetId;
     }
     
+    
+    
+    
+    
+    
     public void assignAttributes(float mPC, float overscanRange, int numSpokes){
         areaAsM2 = 0;
         
@@ -58,6 +68,11 @@ class RadarTarget {
         avEchoStrength = -1;
         minEchoStrength = 16;
         maxEchoStrength = -1;
+        
+        sCI = latest.get(0).cellIdx;
+        lCI = latest.get(0).cellIdx;
+        sSI = latest.get(0).spokeIdx;
+        lSI = latest.get(0).spokeIdx;
         
         for(RadarCell cell : latest){
             float rSC = cell.cellIdx*mPC;
@@ -84,21 +99,6 @@ class RadarTarget {
             if(cell.echo < minEchoStrength)
                 minEchoStrength = cell.echo;
             
-        }
-        
-        minRange = mPC*minCellIndex;
-        maxRange = mPC*maxCellIndex;
-        
-        avEchoStrength = echoTotal/latest.size();
-    }
-    
-    public void assignOutline(){
-        int sCI = latest.get(0).cellIdx;
-        int lCI = latest.get(0).cellIdx;
-        int sSI = latest.get(0).spokeIdx;
-        int lSI = latest.get(0).spokeIdx;
-        
-        for(RadarCell cell : latest){
             if(cell.cellIdx > lCI)
                 lCI = cell.cellIdx;
             if(cell.cellIdx < sCI)
@@ -107,31 +107,170 @@ class RadarTarget {
                 lSI = cell.spokeIdx;
             if(cell.spokeIdx < sSI)
                 sSI = cell.spokeIdx;
+            
         }
         
-        int[][] targetArea = new int[(lSI-sSI)+2][(lCI-sCI)+2];
+        minRange = mPC*minCellIndex;
+        maxRange = mPC*maxCellIndex;
+        
+        avEchoStrength = echoTotal/latest.size();
+        assignOutline();
+    }
+    
+    
+    
+    
+    
+    public void assignOutline(){
+        recursionCount = 0;
+        int[][] targetArea = new int[(lSI-sSI+3)][(lCI-sCI+3)];
+        outline = new ArrayList<RadarCell>();
         
         for(RadarCell cell : latest){
-            targetArea[(cell.spokeIdx-sSI)+1][(cell.cellIdx-sCI)+1] = cell.echo;
+            targetArea[(cell.spokeIdx-sSI+1)][(cell.cellIdx-sCI+1)] = cell.echo;
         }
         
         int si = 0;
         int ci = 0;
-        
-        while(si < targetArea.length){
+        int caught = 0;
+        boolean notFound = true;
+                
+        while(si < targetArea.length && notFound){
             ci = 0;
             
-            while(ci < targetArea[si].length){
-                if(targetArea[si][ci] != 0)
-                    findOutline(targetArea, si, ci);
+            while(ci < targetArea[si].length && notFound){
+                if(targetArea[si][ci] != 0 && isOutline(targetArea, si, ci)){
+                    try{
+                        ArrayList<RadarCell> notSearched = new ArrayList<RadarCell>();
+                        
+                        while((notFound = !cycleOutline(targetArea, si, ci, notSearched)) || !notSearched.isEmpty()){
+                            RadarCell firstCell = notSearched.get(0);
+                            notSearched.remove(0);
+                            si = firstCell.spokeIdx;
+                            ci = firstCell.cellIdx;
+                            recursionCount = 0;
+                        }
+                    } catch(StackOverflowError e){
+                        caught++;
+                    }
+                }
                 ci++;
             }
             si++;
         }
-        
+//        System.out.println("Outline StackOverflow caught: "+caught);
     }
-    private void findOutline(int[][] targetArea, int spokeIndex, int cellIndex){
+    
+    
+    
+    
+    
+    private boolean cycleOutline(int[][] targetArea, int si, int ci, ArrayList<RadarCell> notSearched){
+        outline.add(new RadarCell(si+sSI-1, ci+sCI-1, targetArea[si][ci]));
+        targetArea[si][ci] = 16;
         
+        if(++recursionCount == 2500){
+            notSearched.add(new RadarCell(si, ci, targetArea[si][ci]));
+            return false;
+        }
+        
+        //top left
+        if(targetArea[si-1][ci-1] != 0 && targetArea[si-1][ci-1] != 16 && isOutline(targetArea, si-1, ci-1)){
+            boolean complete = cycleOutline(targetArea, si-1, ci-1, notSearched);
+            if(!complete){
+                notSearched.add(new RadarCell(si, ci, targetArea[si][ci]));
+                return false;
+            }
+                
+        }
+        
+        //top
+        if(targetArea[si-1][ci] != 0 && targetArea[si-1][ci] != 16 && isOutline(targetArea, si-1, ci)){
+            boolean complete = cycleOutline(targetArea, si-1, ci, notSearched);
+            if(!complete){
+                notSearched.add(new RadarCell(si, ci, targetArea[si][ci]));
+                return false;
+            }
+        }
+        
+        //top right
+        if(targetArea[si-1][ci+1] != 0 && targetArea[si-1][ci+1] != 16 && isOutline(targetArea, si-1, ci+1)){
+            boolean complete = cycleOutline(targetArea, si-1, ci+1, notSearched);
+            if(!complete){
+                notSearched.add(new RadarCell(si, ci, targetArea[si][ci]));
+                return false;
+            }
+        }
+        
+        //left
+        if(targetArea[si][ci-1] != 0 && targetArea[si][ci-1] != 16 && isOutline(targetArea, si, ci-1)){
+            boolean complete = cycleOutline(targetArea, si, ci-1, notSearched);
+            if(!complete){
+                notSearched.add(new RadarCell(si, ci, targetArea[si][ci]));
+                return false;
+            }
+        }
+        
+        //right
+        if(targetArea[si][ci+1] != 0 && targetArea[si][ci+1] != 16 &&  isOutline(targetArea, si, ci+1)){
+            boolean complete = cycleOutline(targetArea, si, ci+1, notSearched);
+            if(!complete){
+                notSearched.add(new RadarCell(si, ci, targetArea[si][ci]));
+                return false;
+            }
+        }
+        
+        //bottom left
+        if(targetArea[si+1][ci-1] != 0 && targetArea[si+1][ci-1] != 16 &&  isOutline(targetArea, si+1, ci-1)){
+            boolean complete = cycleOutline(targetArea, si+1, ci-1, notSearched);
+            if(!complete){
+                notSearched.add(new RadarCell(si, ci, targetArea[si][ci]));
+                return false;
+            }
+        }
+        
+        //bottom
+        if(targetArea[si+1][ci] != 0 && targetArea[si+1][ci] != 16 &&  isOutline(targetArea, si+1, ci)){
+            boolean complete = cycleOutline(targetArea, si+1, ci, notSearched);
+            if(!complete){
+                notSearched.add(new RadarCell(si, ci, targetArea[si][ci]));
+                return false;
+            }
+        }
+        
+        //bottom right
+        if(targetArea[si+1][ci+1] != 0 && targetArea[si+1][ci+1] != 16 &&  isOutline(targetArea, si+1, ci+1)){
+            boolean complete = cycleOutline(targetArea, si+1, ci+1, notSearched);
+            if(!complete){
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    
+    
+    
+    
+    private boolean isOutline(int[][] targetArea, int si, int ci){
+        
+        //top
+        if(targetArea[si-1][ci] == 0)
+            return true;
+        
+        //bottom
+        if(targetArea[si+1][ci] == 0)
+            return true;
+        
+        //left
+        if(targetArea[si][ci-1] == 0)
+            return true;
+        
+        //right
+        if(targetArea[si][ci+1] == 0)
+            return true;
+        
+        return false;
     }
     
     public boolean targetPartOverlaps(ArrayList tp){

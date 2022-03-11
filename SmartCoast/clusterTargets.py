@@ -27,8 +27,6 @@ def main(file):
     kmeans.fit(dataframe.values)
     dataframe['cluster'] = kmeans.labels_
     dataframe.to_csv(file, index=False)
-    dataframe = pd.read_csv(file)
-    print(dataframe)
 
 
 
