@@ -25,14 +25,13 @@ import java.awt.Font;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.BorderLayout;
+import java.awt.Rectangle;
 import javax.imageio.ImageIO; //needed for writing image to file only
-import javax.swing.event.MouseInputAdapter;
 
 //for radar dat file handing
 import java.io.File;
 import java.io.FileWriter;
 import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
 //for processing radar data
@@ -40,15 +39,16 @@ import javax.swing.SwingWorker;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.swing.JTable;
 
 /**
  *
  * @author cormac
  */
 public class RadarDisplay {
-
+    
+    private static JTable table;
+    private static MouseHandler mouseHandler;
     private static JFrame radarWindow;
     private static final String BASE_DIR = "C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\";
     private static RadarSession currRadarSession;
@@ -57,7 +57,7 @@ public class RadarDisplay {
     private static JLabel lMPerCell, lRangeIR, lSpokeSeqNums,
                           lActiveCells, lNumRotFiles, lRot, lDate, lTime, lWarning, lNum, 
                           lNumRotForRefRot, lthreshold, lNumRotForWetRot, lWetThreshold;
-    private static JButton bLoad, bStepFwd, bStepBck, bRun, bStop, bReset, bClear;
+    private static JButton bLoad, bStepFwd, bStepBck, bRun, bStop, bReset, bClear, bOutline;
     private static JComboBox cbDirectoryList, cbRotationFileList, cbFileSkipStep;
     private static JCheckBox ckBxDrawGraphics, ckBxApplyRefMask;
     private static JTextField txtBxNumRotForRefRot, txtBxthreshold, txtBxNumRotForWetRot, txtBxWetThreshold;
@@ -217,6 +217,9 @@ public class RadarDisplay {
         bClear = new JButton("Clear Display");
         bClear.setBounds(25, 465, 120, 30);
         
+        bOutline = new JButton("Outline");
+        bOutline.setBounds(1355, 585, 120, 30);
+        
         txtBxNumRotForRefRot = new JTextField("20");
         txtBxNumRotForRefRot.setBounds(1190, 40, 50, 30);
         
@@ -230,6 +233,14 @@ public class RadarDisplay {
         txtBxWetThreshold.setBounds(1190, 130, 50, 30);
         
         directoryPath = new File (BASE_DIR);
+        
+        String[] header = {"ID", "Size ACC", "Area", "Min Range", "Max Range", "Average ES", "Min ES", "Max ES"};
+        String[][] data = {{"ID", "Size ACC", "Area", "Min Range","Max Range","Average ES","Min ES","Max ES"},
+                {"","","","","","","",""}};
+        table = new JTable(data, header);
+        table.setBounds(975, 625, 500, 30);
+        
+        
         
         //List of all directories
         filesList = directoryPath.listFiles();
@@ -259,6 +270,7 @@ public class RadarDisplay {
         radarWindow.add(txtBxthreshold);
         radarWindow.add(txtBxNumRotForWetRot);
         radarWindow.add(txtBxWetThreshold);
+        radarWindow.add(table);
 
         bLoad.addActionListener((ActionEvent e) -> {
             CountDownLatch latch = new CountDownLatch(0);
@@ -312,6 +324,10 @@ public class RadarDisplay {
             clearDisplay();
         });
         
+        bOutline.addActionListener((ActionEvent e) ->{
+           outline(); 
+        });
+        
         cbRotationFileList.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 lRot.setText("Rotation: " + (cbRotationFileList.getSelectedIndex() +1));
@@ -353,9 +369,13 @@ public class RadarDisplay {
         radarWindow.add(bReset);
         radarWindow.add(bClear);
         radarWindow.add(ckBxApplyRefMask);
+        radarWindow.add(bOutline);
 
         //Add the PPIPanel to the App window
         ppiPanel = new PPIPanel();
+        mouseHandler = new MouseHandler(ppiPanel, null, null, table);
+        ppiPanel.addMouseListener(mouseHandler);
+        
         radarWindow.add(ppiPanel, BorderLayout.CENTER);
         radarWindow.pack();
         radarWindow.setVisible(true);
@@ -364,6 +384,13 @@ public class RadarDisplay {
     private static void clearDisplay(){
         ppiPanel.clearDisplay();
         radarWindow.repaint();
+    }
+    
+    private static void outline(){
+        if(currRadarSession != null && currRadarSession.masterTargets != null){
+            ppiPanel.outline(currRadarSession.masterTargets);
+            radarWindow.repaint();
+        }
     }
 
     private static void processASingleRotation(File rotationFile, CountDownLatch latch) {
@@ -413,6 +440,10 @@ public class RadarDisplay {
                 }
                 
                 rotation.findTargets();
+                currRadarSession.masterTargets = rotation.rotationTargets;
+                mouseHandler.targetTable = currRadarSession.masterTargets;
+                mouseHandler.radarWindow = radarWindow;
+                
                 
                 for (RadarSpoke rs : rotation.getSpokes()) {
                     //List l = new <RadarSpoke>ArrayList();
@@ -785,10 +816,11 @@ public class RadarDisplay {
 
 
 class PPIPanel extends JPanel {
-
-    private final int ppiDiameter = 1200;
-    private int ppiCentreX = ppiDiameter / 2;
-    private int ppiCentreY = ppiDiameter / 2;
+    
+    private final int rectX = 220;
+    private final int rectY = 0;
+    private final int ppiHeight = 800;
+    private final int ppiWidth = 800;
     private static BufferedImage ppiFullSizeImage;
     private static BufferedImage ppiDisplayImage;
 
@@ -1009,8 +1041,8 @@ class PPIPanel extends JPanel {
     private void resizePPIImageForDisplay() {
         //ppiDisplayImage = Scalr.resize(ppiFullSizeImage, Scalr.Method.BALANCED, ppiDisplayImage.getWidth(), ppiDisplayImage.getHeight());
 
-        int targetWidth = 900;
-        int targetHeight = 900;
+        int targetWidth = ppiWidth;
+        int targetHeight = ppiHeight;
         float ratio = ((float) ppiFullSizeImage.getHeight() / (float) ppiFullSizeImage.getWidth());
         if (ratio <= 1) { //square or landscape-oriented image
             targetHeight = (int) Math.ceil((float) targetWidth * ratio);
@@ -1091,7 +1123,7 @@ class PPIPanel extends JPanel {
 
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        g.drawImage(ppiDisplayImage,220, 0, null);
+        g.drawImage(ppiDisplayImage,rectX, rectY, null);
         //Toolkit.getDefaultToolkit().sync();
     }//paintComponent
     
@@ -1123,7 +1155,162 @@ class PPIPanel extends JPanel {
 
     }
     
-
+    public void outline(RadarTargetTable masterTargetTable){
+        ArrayList<RadarTarget> targets = masterTargetTable.targets;
+        
+        if(targets.isEmpty()){
+            System.out.println("Empty Targets");
+            return;
+        }
+        
+       Graphics2D ppiImageg = (Graphics2D) ppiFullSizeImage.getGraphics();
+       ppiImageg.setColor(Color.yellow);
+       
+       
+       for(RadarTarget target : targets){
+           ArrayList<RadarCell> outline = target.outline;
+           
+           for(RadarCell cell : outline){
+               int[] coords = getScreenCoordinates(cell.spokeIdx, cell.cellIdx);
+               ppiImageg.drawOval(coords[0], coords[1], 3, 3);
+           }
+       }       
+       
+       ppiImageg.dispose();
+       resizePPIImageForDisplay();
+    }
+    
+    public void outline(RadarTargetTable targetTable, int x, int y, JTable table){
+        int half = ppiWidth/2;
+        int centreRadarX = rectX + (ppiWidth/2); //620
+        int centreRadarY = rectY + (ppiHeight/2); //400
+        
+        ////zero base y coordinate
+        if(y >= centreRadarY)//upper half
+            y = (y - centreRadarY)*(-1);
+        else//lower half
+            y = centreRadarY - y;
+        
+        
+        //zero base x coordinate
+        if(x >= centreRadarX)
+            x = x - centreRadarX;
+        else
+            x = (centreRadarX - x)*(-1);
+        
+        RadarCell c = getSpokeCell(x, y);
+        
+        
+        int clickedSpoke = c.spokeIdx;
+        int clickedCell = c.cellIdx;
+        RadarTarget selectedTarget = null;
+        
+        //closest target
+        RadarTarget closestTarget = null;
+        double closestDistance = 10000;
+        
+        int targetIndex = 0;
+        int cellIndex = 0;
+        ArrayList<RadarTarget> targets = targetTable.targets;
+        
+        while(targetIndex < targets.size()){
+            RadarTarget target = targets.get(targetIndex);
+            ArrayList<RadarCell> cells = target.latest;
+            
+            cellIndex = 0;
+            
+            while(cellIndex < cells.size()){
+                RadarCell cell = cells.get(cellIndex);
+                int[] coords = getScreenCoordinates(cell.spokeIdx, cell.cellIdx);
+                double distance = getDistance(x,y,coords[0],coords[1]);
+                
+                //if spoke cell match run
+                if(clickedSpoke == cell.spokeIdx && clickedCell == cell.cellIdx){
+                    selectedTarget = target;
+                    cellIndex = cells.size();
+                    targetIndex = targets.size();
+                }
+                //if mis-clicked get target closest
+                else if(distance < closestDistance){
+                    //System.out.println("x: "+x+" y: "+y+" c[0]: "+coords[0]+" c[1]: "+coords[1]+" d: "+distance+" cd: "+closestDistance);
+                    closestTarget = target;
+                    closestDistance = distance;
+                }
+                cellIndex++;
+            }
+            targetIndex++;
+        }
+        
+        if(selectedTarget == null && closestTarget == null){
+            System.out.println("null");
+            return;
+        }
+        
+        if(selectedTarget == null){
+            selectedTarget = closestTarget;
+            System.out.println("closest target used");
+        }
+            
+        
+        
+        System.out.println("selectedTarget.size(): "+selectedTarget.latest.size()+"\n\n");
+        Graphics2D ppiImageg = (Graphics2D) ppiFullSizeImage.getGraphics();
+        ppiImageg.setColor(Color.yellow);
+        
+        for(RadarCell cell : selectedTarget.latest){
+            int[] coords = getScreenCoordinates(cell.spokeIdx, cell.cellIdx);
+            ppiImageg.drawOval(coords[0], coords[1], 3, 3);
+        }
+        
+//        System.out.println("closestDistance: "+closestDistance);
+        
+        ppiImageg.dispose();
+        resizePPIImageForDisplay();
+        
+        table.setValueAt(String.valueOf(selectedTarget.targetID), 1, 0);
+        table.setValueAt(String.valueOf(selectedTarget.sizeAsCellCount), 1, 1);
+        table.setValueAt(String.valueOf(selectedTarget.areaAsM2), 1, 2);
+        table.setValueAt(String.valueOf(selectedTarget.minRange), 1, 3);
+        table.setValueAt(String.valueOf(selectedTarget.maxRange), 1, 4);
+        table.setValueAt(String.valueOf(selectedTarget.avEchoStrength), 1, 5);
+        table.setValueAt(String.valueOf(selectedTarget.minEchoStrength), 1, 6);
+        table.setValueAt(String.valueOf(selectedTarget.maxEchoStrength), 1, 7);
+        
+    }
+    
+    private double getDistance(int x1, int y1, int x2, int y2){
+        int remainXSqrd = (x2-x1)*(x2-x1);
+        int remainYSqrd = (y2-y1)*(y2-y1);
+        return Math.sqrt(remainXSqrd+remainYSqrd);
+    }
+    
+    private RadarCell getSpokeCell(int x, int y){
+        double degreesPerSpoke = 0.17578125; //360 degrees / 2048 spokes per rotation 
+        double angle = 0;
+        
+        if(x>=0&&y>0){//Q1
+            angle = Math.toDegrees(Math.atan((double)x/y));            
+        }
+        else if(x>0&&y<=0){//Q2
+            y = y*(-1);
+            angle = Math.toDegrees(Math.atan((double)y/x))+90;
+        }
+        else if(x<=0&&y<0){//Q3
+            x = x * (-1);
+            y = y * (-1);
+            angle = Math.toDegrees(Math.atan((double)x/y))+180;
+        }
+        else if(x<=0&&y>=0){//Q4
+            x = x * (-1);
+            angle = Math.toDegrees(Math.atan((double)y/x))+270;
+        }
+        
+        int spoke = (int) Math.round(angle/degreesPerSpoke);
+        double distance = Math.sqrt((x*x)+(y*y));
+        int cell = (int) Math.round(distance/(ppiWidth/2)*1024);
+        System.out.println("spoke: "+spoke+" cell: "+cell);
+        return new RadarCell(spoke, cell, 0);
+    }
 }//MyPanel
 
 

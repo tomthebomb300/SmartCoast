@@ -75,14 +75,14 @@ class RadarTarget {
         lSI = latest.get(0).spokeIdx;
         
         for(RadarCell cell : latest){
-            float rSC = cell.cellIdx*mPC;
-            float rBC = cell.cellIdx+1*mPC;
+            double rSC = cell.cellIdx*mPC;
+            double rBC = (cell.cellIdx+1)*mPC;
             
             double aSC = Math.PI*(rSC*rSC);
             double aBC = Math.PI*(rBC*rBC);
             
             double iA = aBC-aSC;
-            double cA = ((360/numSpokes)/360)*iA;
+            double cA = (((double)360/numSpokes)/360)*iA;
             areaAsM2 = areaAsM2 + cA;
             
             if(cell.cellIdx < minCellIndex)
@@ -109,9 +109,13 @@ class RadarTarget {
                 sSI = cell.spokeIdx;
             
         }
-        
+
         minRange = mPC*minCellIndex;
         maxRange = mPC*maxCellIndex;
+        
+        sizeAsCellCount = latest.size();
+        
+        areaAsM2 = Math.round(areaAsM2);
         
         avEchoStrength = echoTotal/latest.size();
         assignOutline();
@@ -272,17 +276,6 @@ class RadarTarget {
         
         return false;
     }
-    
-    public boolean targetPartOverlaps(ArrayList tp){
-//        if(){
-//            return true;
-//        }
-        return false;
-    }//targetPartOverlaps
-    
-    public void addTargetPart(ArrayList tp){
-        
-    }//add a target part to this target
     
     public void updateTargetCharacteristics(){
         //recalculate all target characteristics. Call after all target parts

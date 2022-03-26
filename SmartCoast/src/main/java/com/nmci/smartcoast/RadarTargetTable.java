@@ -28,27 +28,6 @@ class RadarTargetTable {
        this.targets = targets;
     }//constructor
     
-    //used by RadarRotation->rotationTargets
-    public void updateTargetsFromSpoke(RadarSpoke rs){
-        ArrayList <ArrayList>targetParts;
-        targetParts = rs.getTargetParts();
-        for (ArrayList tp : targetParts) {
-            boolean found=false;
-            for (RadarTarget rt : targets){
-                if(rt.targetPartOverlaps(tp)){
-                    found = true;
-                    rt.addTargetPart(tp);
-                    rt.updateTargetCharacteristics();
-                }
-                //NO: fall out of this loop; matching target not found
-            }
-            if(found == false){
-                //add as new target
-//                targets.add(new RadarTarget(tp));
-            }
-        }
-    }//updateTargetsFromSpoke
-    
     //use by RadarSession->masterTargets
     public void updateTargetsFromRotation(RadarRotation rot){
         

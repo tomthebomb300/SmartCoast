@@ -134,7 +134,7 @@ class RadarRotation {
     
     
     //writing targets to csv file + calling python file to cluster them
-    public void clusterTargets(){
+    private void clusterTargets(){
         //write targets to csv
         try{
             String csvName = "targets.csv";
@@ -310,10 +310,6 @@ class RadarRotation {
         
         return splits;
     }
-    
-    public void analyseTargets(){
-        
-    }//analyseTargets
     
     public String getDate(){
         return rotationDate;
