@@ -817,8 +817,10 @@ public class RadarDisplay {
 
 class PPIPanel extends JPanel {
     
-    private final int rectX = 220;
-    private final int rectY = 0;
+    private final int rectOriginX = 220;
+    private final int rectOriginY = 0;
+    private final int rectHeight = 2048;
+    private final int rectWidth = 2048;
     private final int ppiHeight = 800;
     private final int ppiWidth = 800;
     private static BufferedImage ppiFullSizeImage;
@@ -1123,7 +1125,7 @@ class PPIPanel extends JPanel {
 
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        g.drawImage(ppiDisplayImage,rectX, rectY, null);
+        g.drawImage(ppiDisplayImage,rectOriginX, rectOriginY, null);
         //Toolkit.getDefaultToolkit().sync();
     }//paintComponent
     
@@ -1181,9 +1183,8 @@ class PPIPanel extends JPanel {
     }
     
     public void outline(RadarTargetTable targetTable, int x, int y, JTable table){
-        int half = ppiWidth/2;
-        int centreRadarX = rectX + (ppiWidth/2); //620
-        int centreRadarY = rectY + (ppiHeight/2); //400
+        int centreRadarX = rectOriginX + (ppiWidth/2); //620
+        int centreRadarY = rectOriginY + (ppiHeight/2); //400
         
         ////zero base y coordinate
         if(y >= centreRadarY)//upper half
@@ -1191,15 +1192,21 @@ class PPIPanel extends JPanel {
         else//lower half
             y = centreRadarY - y;
         
-        
         //zero base x coordinate
         if(x >= centreRadarX)
             x = x - centreRadarX;
         else
             x = (centreRadarX - x)*(-1);
         
+        System.out.println("x:    "+x+" y:    "+y);
+        
         RadarCell c = getSpokeCell(x, y);
         
+//        int point[] = getScreenCoordinates(c.spokeIdx, c.cellIdx);
+//        int cellx = point[0];
+//        int celly = point[1];
+        int cellx;
+        int celly;
         
         int clickedSpoke = c.spokeIdx;
         int clickedCell = c.cellIdx;
@@ -1222,7 +1229,29 @@ class PPIPanel extends JPanel {
             while(cellIndex < cells.size()){
                 RadarCell cell = cells.get(cellIndex);
                 int[] coords = getScreenCoordinates(cell.spokeIdx, cell.cellIdx);
-                double distance = getDistance(x,y,coords[0],coords[1]);
+                cellx = coords[0];
+                celly = coords[1];
+                
+                //next 4 if statements for converting x,y of rectangle to x,y of graph
+                if(cellx >= (rectWidth/2)){
+                    cellx = cellx-(rectWidth/2);
+                }
+                else{
+                    cellx = ((rectWidth/2)-cellx)*(-1);
+                }
+                
+                if(celly >= (rectHeight/2)){
+                    celly = (rectHeight/2)-celly;
+                }
+                else{
+                    celly = (celly-(rectHeight/2))*(-1);
+                }
+                
+                //convert 0->2048 coordinates to 0->800
+                cellx = (int) Math.ceil((double)cellx/((double)rectWidth/ppiWidth));
+                celly = (int) Math.ceil((double)celly/((double)rectWidth/ppiWidth));
+                    
+                double distance = getDistance(x,y,cellx,celly);
                 
                 //if spoke cell match run
                 if(clickedSpoke == cell.spokeIdx && clickedCell == cell.cellIdx){
@@ -1232,7 +1261,6 @@ class PPIPanel extends JPanel {
                 }
                 //if mis-clicked get target closest
                 else if(distance < closestDistance){
-                    //System.out.println("x: "+x+" y: "+y+" c[0]: "+coords[0]+" c[1]: "+coords[1]+" d: "+distance+" cd: "+closestDistance);
                     closestTarget = target;
                     closestDistance = distance;
                 }
@@ -1253,7 +1281,7 @@ class PPIPanel extends JPanel {
             
         
         
-        System.out.println("selectedTarget.size(): "+selectedTarget.latest.size()+"\n\n");
+        System.out.println("\n\n");
         Graphics2D ppiImageg = (Graphics2D) ppiFullSizeImage.getGraphics();
         ppiImageg.setColor(Color.yellow);
         
@@ -1262,7 +1290,6 @@ class PPIPanel extends JPanel {
             ppiImageg.drawOval(coords[0], coords[1], 3, 3);
         }
         
-//        System.out.println("closestDistance: "+closestDistance);
         
         ppiImageg.dispose();
         resizePPIImageForDisplay();
@@ -1308,7 +1335,6 @@ class PPIPanel extends JPanel {
         int spoke = (int) Math.round(angle/degreesPerSpoke);
         double distance = Math.sqrt((x*x)+(y*y));
         int cell = (int) Math.round(distance/(ppiWidth/2)*1024);
-        System.out.println("spoke: "+spoke+" cell: "+cell);
         return new RadarCell(spoke, cell, 0);
     }
 }//MyPanel
