@@ -421,14 +421,9 @@ public class RadarDisplay {
                     writer.close();
                 }
                 
-                RadarRotation refrenceMask = null;
+                RadarRotation refrenceMask = currRadarSession.refrenceMask;
                 if(ckBxApplyRefMask.isSelected()){
-                    String stringRMFile = "RefrenceMask.ser";
-                    if(new File(stringRMFile).exists()){
-                        ObjectInputStream in = new ObjectInputStream(new FileInputStream(stringRMFile));
-                        refrenceMask = (RadarRotation) in.readObject();
-                    }
-                    else{
+                    if(currRadarSession.refrenceMask == null){
                         int numRotations = Integer.parseInt(txtBxNumRotForRefRot.getText());
                     
                         //creating refrenceMask using dry rotations.
@@ -445,14 +440,7 @@ public class RadarDisplay {
 
                         //combine the two masks adding the edges and higher echo values to the dry mask. 
                         refrenceMask = addEdgesAndMaxValues(dryMask, wetMask);
-                        
-                        try{
-                            ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(stringRMFile));
-                            out.writeObject(refrenceMask);
-                        }
-                        catch(IOException e){
-                            System.out.println("failed writing refrence mask");  
-                        }
+                        currRadarSession.refrenceMask = refrenceMask;
                     }
                     
                     //apply the refrenceMask to the rotation

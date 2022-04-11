@@ -21,12 +21,14 @@ class RadarSession {
     Position radarSite;
     int siteElevation;
     RadarTargetTable masterTargets;
+    RadarRotation refrenceMask;
     
     private static final int TARGET_ANALYSIS_REALTIME = 0;
     private static final int TARGET_ANALYSIS_SINGLE_ROTATION = 1;
     private static final int TARGET_ANALYSIS_MULTIPLE_ROTATIONS = 2;
     
     RadarSession(File directoryPath){
+        refrenceMask = null;
         //read station info. from station.txt
          try ( Scanner sc = new Scanner(new File(directoryPath + "/station.txt"))) {
                 siteName = sc.nextLine();
