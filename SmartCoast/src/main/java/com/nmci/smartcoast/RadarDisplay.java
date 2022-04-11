@@ -817,6 +817,7 @@ public class RadarDisplay {
 
 class PPIPanel extends JPanel {
     
+    private static RadarTarget outlinedTarget;
     private final int rectOriginX = 220;
     private final int rectOriginY = 0;
     private final int rectHeight = 2048;
@@ -842,6 +843,7 @@ class PPIPanel extends JPanel {
         setBackground(Color.black);
         //setLayout(new FlowLayout());
         initialisePPIImages();
+        outlinedTarget = null;
     }//initPanel
 
     public void initialisePPIImages() {
@@ -1285,10 +1287,22 @@ class PPIPanel extends JPanel {
         Graphics2D ppiImageg = (Graphics2D) ppiFullSizeImage.getGraphics();
         ppiImageg.setColor(Color.yellow);
         
+        //outline the selected target
         for(RadarCell cell : selectedTarget.latest){
             int[] coords = getScreenCoordinates(cell.spokeIdx, cell.cellIdx);
             ppiImageg.drawOval(coords[0], coords[1], 3, 3);
         }
+        
+        //if target already been outlined un-outline it
+        if(outlinedTarget != null){
+            for (RadarCell cell : outlinedTarget.latest){
+            int[] coords = getScreenCoordinates(cell.spokeIdx, cell.cellIdx);
+            ppiImageg.setColor(getColours(cell.echo));
+            ppiImageg.drawOval(coords[0], coords[1], 3, 3);
+            }
+        }
+        
+        outlinedTarget = selectedTarget;
         
         
         ppiImageg.dispose();
