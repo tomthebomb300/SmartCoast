@@ -25,13 +25,17 @@ import java.awt.Font;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.BorderLayout;
-import java.awt.Rectangle;
 import javax.imageio.ImageIO; //needed for writing image to file only
 
 //for radar dat file handing
 import java.io.File;
 import java.io.FileWriter;
 import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 
 //for processing radar data
@@ -419,22 +423,38 @@ public class RadarDisplay {
                 
                 RadarRotation refrenceMask = null;
                 if(ckBxApplyRefMask.isSelected()){
-                    int numRotations = Integer.parseInt(txtBxNumRotForRefRot.getText());
+                    String stringRMFile = "RefrenceMask.ser";
+                    if(new File(stringRMFile).exists()){
+                        ObjectInputStream in = new ObjectInputStream(new FileInputStream(stringRMFile));
+                        refrenceMask = (RadarRotation) in.readObject();
+                    }
+                    else{
+                        int numRotations = Integer.parseInt(txtBxNumRotForRefRot.getText());
                     
-                    //creating refrenceMask using dry rotations.
-                    RadarRotation dryMask = createRefrenceMask(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\35000m"),
-                                                            (Double.parseDouble(txtBxthreshold.getText()))*numRotations,
-                                                            numRotations);
+                        //creating refrenceMask using dry rotations.
+                        RadarRotation dryMask = createRefrenceMask(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\35000m"),
+                                                                (Double.parseDouble(txtBxthreshold.getText()))*numRotations,
+                                                                numRotations);
+
+                        numRotations = Integer.parseInt(txtBxNumRotForWetRot.getText());
+
+                        //creating refrenceMask using wet rotations.
+                        RadarRotation wetMask = createRefrenceMask(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\rain_35000m"),
+                                                                (Double.parseDouble(txtBxWetThreshold.getText()))*numRotations,
+                                                                numRotations);
+
+                        //combine the two masks adding the edges and higher echo values to the dry mask. 
+                        refrenceMask = addEdgesAndMaxValues(dryMask, wetMask);
+                        
+                        try{
+                            ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(stringRMFile));
+                            out.writeObject(refrenceMask);
+                        }
+                        catch(IOException e){
+                            System.out.println("failed writing refrence mask");  
+                        }
+                    }
                     
-                    numRotations = Integer.parseInt(txtBxNumRotForWetRot.getText());
-                    
-                    //creating refrenceMask using wet rotations.
-                    RadarRotation wetMask = createRefrenceMask(new File("C:\\Users\\Thomas O Callaghan\\NMCI Placement\\Radar data\\rain_35000m"),
-                                                            (Double.parseDouble(txtBxWetThreshold.getText()))*numRotations,
-                                                            numRotations);
-                    
-                    //combine the two masks adding the edges and higher echo values to the dry mask. 
-                    refrenceMask = addEdgesAndMaxValues(dryMask, wetMask);
                     //apply the refrenceMask to the rotation
                     applyRefMask(refrenceMask, rotation);
                 }

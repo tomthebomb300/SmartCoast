@@ -24,12 +24,13 @@ import com.opencsv.CSVWriter;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.InputStreamReader;
+import java.io.Serializable;
 
 /**
  *
  * @author cormac
  */
-class RadarRotation {
+class RadarRotation implements Serializable{
     //Date related information
     String year;
     String month;

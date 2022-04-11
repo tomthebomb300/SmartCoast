@@ -5,11 +5,13 @@
  */
 package com.nmci.smartcoast;
 
+import java.io.Serializable;
+
 /**
  *
  * @author cormac
  */
-class RadarCell {
+class RadarCell implements Serializable{
 
     int spokeIdx;
     int cellIdx;

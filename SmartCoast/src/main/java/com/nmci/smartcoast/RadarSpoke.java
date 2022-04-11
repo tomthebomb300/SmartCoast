@@ -5,13 +5,14 @@
  */
 package com.nmci.smartcoast;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
  *
  * @author cormac
  */
-public class RadarSpoke {
+public class RadarSpoke implements Serializable{
 
     int spokeNum;
     int seqNum;
